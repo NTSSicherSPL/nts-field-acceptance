@@ -105,90 +105,117 @@
     }
 
     /* ══════════════════════════════
-       LANDING PAGE
+       ACCESS PAGE
     ══════════════════════════════ */
-    #page-landing {
-      background: linear-gradient(160deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
+    #page-access {
+      background: linear-gradient(160deg, #0a1628 0%, #0d1f3c 55%, #0a1628 100%);
       position: relative;
       overflow: hidden;
-    }
-    #page-landing::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 800px 600px at 70% -10%, rgba(41,170,225,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 400px 400px at -10% 80%, rgba(41,170,225,0.05) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .landing-grid-bg {
-      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-    }
-    .landing-grid-bg svg { width: 100%; height: 100%; opacity: 0.04; }
-
-    .landing-content {
-      position: relative; z-index: 1;
-      display: flex; flex-direction: column;
+      justify-content: center;
       align-items: center;
-      padding: 48px 24px 32px;
-      max-width: 480px;
-      margin: 0 auto;
-      min-height: 100vh;
     }
-
-    .landing-logo-wrap {
-      width: 180px; height: 120px;
+    .access-bg {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
+    }
+    .access-content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 40px 24px 32px;
+      width: 100%; max-width: 420px;
+    }
+    .access-logo-wrap {
+      width: 160px; height: 100px;
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
-    .landing-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
-
-    .landing-app-name {
+    .access-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    .access-app-name {
       font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: var(--text);
-      text-transform: uppercase;
-      text-align: center;
-      margin-bottom: 6px;
+      font-size: 26px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--text); text-align: center; margin-bottom: 4px;
     }
-    .landing-app-name span { color: var(--brand); }
-
-    .landing-tagline {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--brand);
-      text-align: center;
-      letter-spacing: 0.5px;
-      margin-bottom: 24px;
-      line-height: 1.5;
+    .access-app-name span { color: var(--brand); }
+    .access-tagline {
+      font-size: 12px; font-weight: 500;
+      color: var(--brand); letter-spacing: 1px;
+      text-align: center; text-transform: uppercase;
+      margin-bottom: 28px;
     }
-
-    .landing-desc {
-      font-size: 14px;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.65;
-      margin-bottom: 36px;
-      max-width: 360px;
+    .access-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      width: 100%;
+      box-shadow: var(--shadow);
     }
-
-    .landing-cta {
-      display: flex; flex-direction: column; gap: 12px;
-      width: 100%; max-width: 320px;
-      margin-bottom: 48px;
+    .access-note {
+      font-size: 12px; color: var(--text-dim);
+      text-align: center; margin-top: 14px; line-height: 1.5;
+    }
+    .access-footer {
+      margin-top: 28px;
+      font-size: 11px; color: var(--text-dim);
+      letter-spacing: 0.5px; text-align: center;
     }
 
+    /* Pending state */
+    .pending-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    .pending-title {
+      font-family: var(--font-display);
+      font-size: 20px; font-weight: 700;
+      letter-spacing: 1px; color: var(--text);
+      text-align: center; margin-bottom: 6px;
+    }
+    .pending-who {
+      font-size: 13px; color: var(--brand);
+      text-align: center; font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .pending-desc {
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.6; text-align: center; margin-bottom: 16px;
+    }
+    .pending-check-row {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-size: 12px; color: var(--text-dim);
+      background: rgba(41,170,225,0.06);
+      border: 1px solid rgba(41,170,225,0.15);
+      border-radius: 8px; padding: 10px 16px;
+    }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--brand); flex-shrink: 0;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* Auth pages — keep for app header reuse */
+    .auth-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .auth-header-logo { width: 48px; height: 32px; object-fit: contain; }
+    .auth-header-title {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 700;
+      letter-spacing: 1.5px; color: var(--text);
+    }
+    .auth-header-title span { color: var(--brand); }
+
+    
+    /* ══════════════════════════════
+       BUTTONS
+    ══════════════════════════════ */
     .btn {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 16px 24px;
       border-radius: var(--radius);
       font-family: var(--font-body);
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; border: none;
       transition: all 0.2s ease;
       text-decoration: none;
       -webkit-tap-highlight-color: transparent;
@@ -197,14 +224,12 @@
     }
     .btn:active { transform: scale(0.97); }
     .btn-primary {
-      background: var(--brand);
-      color: #fff;
+      background: var(--brand); color: #fff;
       box-shadow: 0 4px 20px rgba(41,170,225,0.35);
     }
     .btn-primary:hover { background: var(--brand-dark); box-shadow: 0 6px 28px rgba(41,170,225,0.45); }
     .btn-secondary {
-      background: transparent;
-      color: var(--brand);
+      background: transparent; color: var(--brand);
       border: 1.5px solid var(--brand);
     }
     .btn-secondary:hover { background: rgba(41,170,225,0.08); }
@@ -214,142 +239,21 @@
       border: 1px solid var(--border);
     }
     .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-    .btn-success {
-      background: var(--success);
-      color: #fff;
-    }
-    .btn-danger {
-      background: var(--error);
-      color: #fff;
-    }
-    .btn-sm {
-      padding: 10px 16px;
-      font-size: 13px;
-    }
-    .btn-lg {
-      padding: 20px 28px;
-      font-size: 17px;
-      border-radius: var(--radius-lg);
-    }
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    .landing-features {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 40px;
-    }
-    .feature-pill {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      display: flex; align-items: flex-start; gap: 8px;
-    }
-    .feature-pill .fi { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-    .feature-pill p {
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      font-weight: 500;
-    }
-
-    .landing-footer {
-      margin-top: auto;
-      padding-top: 24px;
-      text-align: center;
-      font-size: 11px;
-      color: var(--text-dim);
-      letter-spacing: 0.5px;
-    }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger  { background: var(--error);   color: #fff; }
+    .btn-sm  { padding: 10px 16px; font-size: 13px; }
+    .btn-lg  { padding: 20px 28px; font-size: 17px; border-radius: var(--radius-lg); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
 
     /* ══════════════════════════════
-       AUTH PAGES (Login / Request)
+       FORM ELEMENTS
     ══════════════════════════════ */
-    .auth-page {
-      background: var(--bg);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .auth-header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .auth-header-logo { width: 60px; height: 40px; object-fit: contain; }
-    .auth-header-title {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      color: var(--text);
-    }
-    .auth-header-title span { color: var(--brand); }
-    .back-btn {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 22px;
-      cursor: pointer;
-      padding: 4px 8px;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .auth-body {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 24px;
-      max-width: 480px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    .auth-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 32px 28px;
-      width: 100%;
-      box-shadow: var(--shadow);
-    }
-
-    .auth-card h2 {
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
-    .auth-card p.subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 28px;
-      line-height: 1.5;
-    }
-
     .form-group { margin-bottom: 18px; }
     .form-group label {
       display: block;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 12px; font-weight: 600;
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
+      text-transform: uppercase; letter-spacing: 0.8px;
       margin-bottom: 8px;
     }
     .form-group input, .form-group select, .form-group textarea {
@@ -359,23 +263,20 @@
       border-radius: var(--radius);
       color: var(--text);
       font-family: var(--font-body);
-      font-size: 15px;
-      padding: 14px 16px;
+      font-size: 15px; padding: 14px 16px;
       outline: none;
       transition: border-color 0.2s ease;
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance: none; appearance: none;
     }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    .form-group input:focus, .form-group select:focus {
       border-color: var(--brand);
       box-shadow: 0 0 0 3px rgba(41,170,225,0.12);
     }
     .form-group input::placeholder { color: var(--text-dim); }
-
     .form-actions { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
 
     /* ══════════════════════════════
-       APP LAYOUT (Post-login)
+       APP LAYOUT
     ══════════════════════════════ */
     #page-app { background: var(--bg); }
 
@@ -383,7 +284,6 @@
       position: sticky; top: 0; z-index: 100;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 0;
     }
     .app-header-top {
       display: flex; align-items: center; gap: 12px;
@@ -393,22 +293,15 @@
     .app-header-info { flex: 1; min-width: 0; }
     .app-header-name {
       font-family: var(--font-display);
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      color: var(--text);
+      font-size: 16px; font-weight: 700;
+      letter-spacing: 1.2px; color: var(--text);
     }
     .app-header-name span { color: var(--brand); }
     .app-header-user {
-      font-size: 11px;
-      color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 11px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .app-header-actions {
-      display: flex; gap: 8px; align-items: center;
-    }
+    .app-header-actions { display: flex; gap: 8px; align-items: center; }
     .icon-btn {
       background: rgba(255,255,255,0.05);
       border: 1px solid var(--border);
@@ -419,10 +312,8 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
     }
     .icon-btn:active { background: rgba(255,255,255,0.1); }
-
     .app-header-site {
       padding: 8px 16px 12px;
       display: flex; gap: 8px; align-items: center;
@@ -433,65 +324,37 @@
       border: 1.5px solid var(--border);
       border-radius: 10px;
       padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 14px; font-weight: 600;
       color: var(--brand);
-      font-family: var(--font-display);
-      letter-spacing: 1px;
+      font-family: var(--font-display); letter-spacing: 1px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: space-between;
     }
-
-    /* Progress bar in header */
-    .overall-progress-wrap {
-      padding: 0 16px 12px;
-    }
+    .overall-progress-wrap { padding: 0 16px 12px; }
     .progress-label-row {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 6px;
     }
     .progress-label-row span {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+      font-size: 11px; color: var(--text-muted);
+      font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
     }
-    .progress-label-row strong {
-      font-size: 14px;
-      color: var(--brand);
-      font-weight: 700;
-    }
+    .progress-label-row strong { font-size: 14px; color: var(--brand); font-weight: 700; }
     .progress-bar {
-      height: 6px;
-      background: var(--card);
-      border-radius: 99px;
-      overflow: hidden;
+      height: 6px; background: var(--card);
+      border-radius: 99px; overflow: hidden;
     }
     .progress-bar-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--brand-dark), var(--brand));
-      border-radius: 99px;
-      transition: width 0.4s ease;
+      border-radius: 99px; transition: width 0.4s ease;
     }
     .progress-bar-fill.success { background: var(--success); }
 
-    /* ── MAIN APP CONTENT ── */
-    .app-content {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-bottom: 100px;
-    }
-
-    /* ── SITE SETUP SCREEN ── */
+    /* ── SITE SETUP ── */
     .site-setup-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       padding: 32px 24px;
     }
     .site-setup-card {
@@ -499,31 +362,30 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 32px 28px;
-      width: 100%;
-      max-width: 400px;
+      width: 100%; max-width: 400px;
     }
     .site-setup-card h2 {
       font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 6px;
-      letter-spacing: 1px;
+      font-size: 22px; font-weight: 700;
+      margin-bottom: 6px; letter-spacing: 1px;
     }
     .site-setup-card p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-      line-height: 1.5;
+      font-size: 13px; color: var(--text-muted);
+      margin-bottom: 24px; line-height: 1.5;
     }
 
     /* ── CATEGORY CARDS ── */
+    .app-content {
+      padding: 16px; display: flex;
+      flex-direction: column; gap: 12px;
+      padding-bottom: 100px;
+    }
     .category-section {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       overflow: hidden;
     }
-
     .category-header {
       display: flex; align-items: center; gap: 12px;
       padding: 14px 16px;
@@ -536,204 +398,137 @@
     .category-title {
       flex: 1;
       font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      color: var(--text);
+      font-size: 17px; font-weight: 700;
+      letter-spacing: 0.8px; color: var(--text);
     }
     .category-badge {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 99px;
-      background: var(--border);
-      color: var(--text-muted);
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 99px;
+      background: var(--border); color: var(--text-muted);
     }
     .category-badge.complete { background: rgba(34,197,94,0.15); color: var(--success); }
     .category-badge.partial  { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .category-badge.na       { background: var(--na-bg); color: var(--na); }
     .chevron { font-size: 16px; color: var(--text-dim); transition: transform 0.2s; }
     .category-section.expanded .chevron { transform: rotate(180deg); }
-
     .subcategory-list { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 
+    /* ── SUB CARDS ── */
     .sub-card {
       background: var(--card);
       border: 1.5px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
-      transition: border-color 0.2s;
+      padding: 16px; transition: border-color 0.2s;
     }
     .sub-card.complete { border-color: rgba(34,197,94,0.4); }
-    .sub-card.active   { border-color: var(--brand); }
-
+    .sub-card.na-state {
+      border-color: var(--na-border);
+      background: rgba(249,115,22,0.04);
+    }
     .sub-card-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 10px;
     }
-    .sub-name {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .sub-count {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-muted);
-    }
+    .sub-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .sub-count { font-size: 13px; font-weight: 700; color: var(--text-muted); }
     .sub-count.done { color: var(--success); }
-
     .photo-count-bar {
-      height: 4px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-bottom: 12px;
+      height: 4px; background: var(--border);
+      border-radius: 99px; overflow: hidden; margin-bottom: 12px;
     }
     .photo-count-fill {
-      height: 100%;
-      background: var(--brand);
-      border-radius: 99px;
-      transition: width 0.3s ease;
+      height: 100%; background: var(--brand);
+      border-radius: 99px; transition: width 0.3s ease;
     }
     .photo-count-fill.done { background: var(--success); }
-
-    .photo-thumbnails {
-      display: flex; gap: 8px; flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .photo-thumb {
-      width: 56px; height: 56px;
-      border-radius: 8px;
-      object-fit: cover;
-      border: 1.5px solid var(--border);
-      position: relative;
-      background: var(--surface);
-    }
-    .thumb-wrap {
-      position: relative;
-      width: 56px; height: 56px;
-    }
+    .photo-thumbnails { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .thumb-wrap { position: relative; width: 56px; height: 56px; }
     .thumb-wrap img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1.5px solid var(--border);
+      width: 100%; height: 100%; object-fit: cover;
+      border-radius: 8px; border: 1.5px solid var(--border);
     }
     .thumb-del {
       position: absolute; top: -6px; right: -6px;
       width: 20px; height: 20px;
-      background: var(--error);
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 12px;
-      line-height: 1;
+      background: var(--error); border: none; border-radius: 50%;
+      color: #fff; font-size: 12px; line-height: 1;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent;
     }
-
     .upload-status-row {
       display: flex; align-items: center; gap: 6px;
-      margin-bottom: 10px;
-      font-size: 11px;
-      color: var(--text-dim);
+      margin-bottom: 10px; font-size: 11px; color: var(--text-dim);
     }
-    .upload-status-dot {
-      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-    }
-    .status-pending  { background: var(--text-dim); }
-    .status-queued   { background: var(--warning); }
-    .status-uploading{ background: var(--brand); animation: pulse 1s infinite; }
-    .status-done     { background: var(--success); }
-    .status-error    { background: var(--error); }
+    .upload-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .status-pending   { background: var(--text-dim); }
+    .status-queued    { background: var(--warning); }
+    .status-uploading { background: var(--brand); animation: pulse 1s infinite; }
+    .status-done      { background: var(--success); }
+    .status-error     { background: var(--error); }
+    .status-na        { background: var(--na); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+    /* ── CAMERA BUTTON ── */
     .camera-btn-wrap { display: flex; gap: 8px; }
     .btn-camera {
-      flex: 1;
-      background: var(--brand);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 14px;
-      font-size: 15px;
-      font-weight: 700;
+      flex: 1; background: var(--brand); color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 14px; font-size: 15px; font-weight: 700;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 8px;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      transition: background 0.2s;
+      touch-action: manipulation; transition: background 0.2s;
     }
-    .btn-camera:active { background: var(--brand-dark); }
-    .btn-camera:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-camera.complete { background: var(--success); }
+    .btn-camera:active  { background: var(--brand-dark); }
+    .btn-camera:disabled{ opacity: 0.4; cursor: not-allowed; }
+    .btn-camera.complete{ background: var(--success); }
 
     /* ── N/A BUTTON ── */
     .btn-na {
       flex-shrink: 0;
-      background: transparent;
-      color: var(--na);
+      background: transparent; color: var(--na);
       border: 1.5px solid var(--na-border);
       border-radius: var(--radius);
-      padding: 14px 16px;
-      font-size: 13px;
-      font-weight: 700;
+      padding: 14px 16px; font-size: 13px; font-weight: 700;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 6px;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
       transition: background 0.2s, color 0.2s;
-      white-space: nowrap;
-      letter-spacing: 0.3px;
+      white-space: nowrap; letter-spacing: 0.3px;
     }
-    .btn-na:active { background: var(--na-bg); }
-    .btn-na:hover  { background: var(--na-bg); }
+    .btn-na:active, .btn-na:hover { background: var(--na-bg); }
 
-    /* ── N/A STATE — sub-card ── */
-    .sub-card.na-state {
-      border-color: var(--na-border);
-      background: rgba(249,115,22,0.04);
-    }
+    /* ── N/A BANNER ── */
     .na-banner {
       display: flex; align-items: center; gap: 10px;
       background: var(--na-bg);
       border: 1px solid var(--na-border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
     }
     .na-badge {
       font-size: 12px; font-weight: 800; letter-spacing: 1px;
       color: var(--na);
       background: rgba(249,115,22,0.15);
       border: 1px solid var(--na-border);
-      border-radius: 6px;
-      padding: 3px 9px;
-      flex-shrink: 0;
+      border-radius: 6px; padding: 3px 9px; flex-shrink: 0;
     }
-    .na-desc {
-      font-size: 12px; color: var(--na); line-height: 1.4; font-weight: 500;
-    }
+    .na-desc { font-size: 12px; color: var(--na); line-height: 1.4; font-weight: 500; }
     .na-undo-btn {
       margin-left: auto; flex-shrink: 0;
       background: none; border: none;
       font-size: 11px; color: var(--text-dim);
-      cursor: pointer; text-decoration: underline;
-      padding: 2px 0;
+      cursor: pointer; text-decoration: underline; padding: 2px 0;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── CATEGORY BADGE N/A ── */
-    .category-badge.na { background: var(--na-bg); color: var(--na); }
-
-    /* ── N/A MODAL ── */
+    /* ── N/A CONFIRM MODAL ── */
     .na-confirm-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
     .na-confirm-title {
       font-family: var(--font-display);
       font-size: 20px; font-weight: 700;
-      letter-spacing: 1px; color: var(--text);
-      margin-bottom: 8px;
+      letter-spacing: 1px; color: var(--text); margin-bottom: 8px;
     }
     .na-confirm-context {
       background: var(--card); border: 1px solid var(--border);
@@ -747,60 +542,44 @@
       font-size: 16px; color: var(--text); font-weight: 700;
       font-family: var(--font-display); letter-spacing: 0.5px;
     }
-    .na-confirm-context .cat-parent {
-      font-size: 12px; color: var(--text-muted); margin-top: 2px;
-    }
+    .na-confirm-context .cat-parent { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .na-warning-text {
-      font-size: 13px; color: var(--text-muted); line-height: 1.55;
-      margin-bottom: 20px;
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.55; margin-bottom: 20px;
     }
     .na-warning-text strong { color: var(--na); }
     .na-confirm-btns { display: flex; flex-direction: column; gap: 10px; }
     .btn-na-confirm {
-      background: var(--na);
-      color: #fff;
+      background: var(--na); color: #fff;
       border: none; border-radius: var(--radius);
-      padding: 15px 20px;
-      font-size: 15px; font-weight: 700;
+      padding: 15px 20px; font-size: 15px; font-weight: 700;
       cursor: pointer; width: 100%;
-      -webkit-tap-highlight-color: transparent;
-      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent; transition: background 0.2s;
     }
     .btn-na-confirm:active { background: #ea6d0e; }
-
-    /* ── STATUS INDICATOR DOT for N/A ── */
-    .status-na { background: var(--na); }
 
     /* ── SUBMIT SECTION ── */
     .submit-section {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 24px;
-      text-align: center;
+      padding: 24px; text-align: center;
     }
     .submit-section h3 {
       font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--success);
-      margin-bottom: 8px;
-      letter-spacing: 1px;
+      font-size: 20px; font-weight: 700;
+      color: var(--success); margin-bottom: 8px; letter-spacing: 1px;
     }
     .submit-section p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-      line-height: 1.5;
+      font-size: 13px; color: var(--text-muted);
+      margin-bottom: 20px; line-height: 1.5;
     }
 
-    /* ── UPLOAD QUEUE INDICATOR ── */
+    /* ── UPLOAD QUEUE BAR ── */
     .upload-queue-bar {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 12px 16px;
-      display: none;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 12px 16px; display: none;
     }
     .upload-queue-bar.show { display: block; }
     .uq-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -809,22 +588,16 @@
 
     /* ── MODALS ── */
     .modal-overlay {
-      display: none;
-      position: fixed; inset: 0; z-index: 1000;
+      display: none; position: fixed; inset: 0; z-index: 1000;
       background: rgba(0,0,0,0.8);
-      align-items: flex-end;
-      justify-content: center;
+      align-items: flex-end; justify-content: center;
     }
     .modal-overlay.show { display: flex; }
     .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-      width: 100%;
-      max-width: 480px;
-      padding: 24px;
-      max-height: 80vh;
-      overflow-y: auto;
+      width: 100%; max-width: 480px;
+      padding: 24px; max-height: 80vh; overflow-y: auto;
       animation: slideUpModal 0.3s ease;
     }
     @keyframes slideUpModal {
@@ -833,124 +606,83 @@
     }
     .modal h3 {
       font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      margin-bottom: 16px;
-      color: var(--text);
+      font-size: 20px; font-weight: 700;
+      letter-spacing: 1px; margin-bottom: 16px; color: var(--text);
     }
     .modal-close {
-      float: right;
-      background: none;
-      border: none;
-      font-size: 24px;
-      color: var(--text-muted);
-      cursor: pointer;
-      margin-top: -4px;
+      float: right; background: none; border: none;
+      font-size: 24px; color: var(--text-muted); cursor: pointer; margin-top: -4px;
     }
 
-    /* Full-screen image viewer */
+    /* ── IMAGE VIEWER ── */
     #img-viewer {
-      display: none;
-      position: fixed; inset: 0; z-index: 2000;
+      display: none; position: fixed; inset: 0; z-index: 2000;
       background: rgba(0,0,0,0.97);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column; align-items: center; justify-content: center;
     }
     #img-viewer.show { display: flex; }
     #img-viewer img { max-width: 100%; max-height: 80vh; object-fit: contain; }
     #img-viewer-close {
       position: absolute; top: 16px; right: 16px;
-      background: rgba(255,255,255,0.1);
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 24px;
+      background: rgba(255,255,255,0.1); border: none;
+      border-radius: 50%; color: #fff; font-size: 24px;
       width: 44px; height: 44px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
 
-    /* Hidden file input */
-    #camera-input { display: none; }
-
-    /* Loading spinner */
-    .spinner-overlay {
-      display: none;
-      position: fixed; inset: 0; z-index: 5000;
-      background: rgba(10,22,40,0.85);
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .spinner-overlay.show { display: flex; }
-    .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid var(--border);
-      border-top-color: var(--brand);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-label { font-size: 14px; color: var(--text-muted); font-weight: 500; }
-
-    /* Success page */
+    /* ── SUCCESS PAGE ── */
     .success-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-      text-align: center;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 24px; text-align: center;
     }
     .success-icon { font-size: 72px; margin-bottom: 16px; }
     .success-screen h2 {
       font-family: var(--font-display);
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--success);
-      margin-bottom: 8px;
-      letter-spacing: 1px;
+      font-size: 26px; font-weight: 700;
+      color: var(--success); margin-bottom: 8px; letter-spacing: 1px;
     }
     .success-screen p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-      max-width: 320px;
-      margin-bottom: 32px;
+      font-size: 14px; color: var(--text-muted);
+      line-height: 1.6; max-width: 320px; margin-bottom: 32px;
     }
     .success-meta {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      width: 100%;
-      max-width: 320px;
-      text-align: left;
-      margin-bottom: 32px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      width: 100%; max-width: 320px;
+      text-align: left; margin-bottom: 32px;
     }
     .success-meta-row {
       display: flex; justify-content: space-between;
-      padding: 6px 0;
-      font-size: 13px;
+      padding: 6px 0; font-size: 13px;
       border-bottom: 1px solid var(--border);
     }
     .success-meta-row:last-child { border-bottom: none; }
     .success-meta-row .label { color: var(--text-muted); }
-    .success-meta-row .val { color: var(--text); font-weight: 600; }
+    .success-meta-row .val   { color: var(--text); font-weight: 600; }
 
-    /* ── RESPONSIVE ── */
-    @media (min-width: 600px) {
-      .landing-features { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    /* ── SPINNER ── */
+    .spinner-overlay {
+      display: none; position: fixed; inset: 0; z-index: 5000;
+      background: rgba(10,22,40,0.85);
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
     }
+    .spinner-overlay.show { display: flex; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border); border-top-color: var(--brand);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+
+        /* ── RESPONSIVE ── */
     @media (min-width: 768px) {
-      .landing-content { padding-top: 64px; }
-      .landing-logo-wrap { width: 220px; height: 140px; }
-      .landing-app-name { font-size: 34px; }
-      .auth-card { padding: 40px 36px; }
+      .access-content { padding-top: 56px; }
+      .access-logo-wrap { width: 200px; height: 128px; }
+      .access-app-name { font-size: 30px; }
+      .access-card { padding: 36px 32px; }
     }
 
     /* Utility */
@@ -998,11 +730,11 @@
 <input type="file" id="camera-input" accept="image/*" capture="environment" multiple />
 
 <!-- ════════════════════════════════════════
-     PAGE: LANDING
+     PAGE: ACCESS (landing + request + auto-login)
 ════════════════════════════════════════ -->
-<div id="page-landing" class="page active">
-  <div class="landing-grid-bg">
-    <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+<div id="page-access" class="page active">
+  <div class="access-bg">
+    <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;">
       <defs>
         <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
           <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="0.5"/>
@@ -1011,87 +743,63 @@
       <rect width="100%" height="100%" fill="url(#grid)" />
     </svg>
   </div>
-  <div class="landing-content">
-    <div class="landing-logo-wrap">
-      <img id="landing-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS Logo" onerror="this.style.display='none'" />
+  <div class="access-content">
+    <div class="access-logo-wrap">
+      <img id="access-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS Logo" class="app-logo" onerror="this.style.display='none'" />
     </div>
-    <div class="landing-app-name">NTS <span>Field</span> Acceptance</div>
-    <div class="landing-tagline">Professional Telecom Site Documentation &amp; Acceptance Platform</div>
-    <div class="landing-desc">
-      Capture, validate and submit field acceptance photos directly from site. All documentation is securely stored and synchronized for project delivery and quality assurance.
-    </div>
-    <div class="landing-cta">
-      <button class="btn btn-primary btn-lg" onclick="showPage('page-login')">🔐 Login</button>
-      <button class="btn btn-secondary btn-lg" onclick="showPage('page-request')">📋 Request Access</button>
-    </div>
-    <div class="landing-features">
-      <div class="feature-pill"><span class="fi">📱</span><p>Mobile-first field workflow</p></div>
-      <div class="feature-pill"><span class="fi">✅</span><p>Mandatory photo validation</p></div>
-      <div class="feature-pill"><span class="fi">🔌</span><p>Offline operation &amp; auto-sync</p></div>
-      <div class="feature-pill"><span class="fi">☁️</span><p>Google Drive cloud storage</p></div>
-      <div class="feature-pill"><span class="fi">🖥️</span><p>Synology NAS sync</p></div>
-      <div class="feature-pill"><span class="fi">📊</span><p>Real-time upload progress</p></div>
-      <div class="feature-pill"><span class="fi">🗂️</span><p>Dynamic category management</p></div>
-      <div class="feature-pill"><span class="fi">🔒</span><p>Secure user approval</p></div>
-    </div>
-    <div class="landing-footer">Powered by Network Ticket Solution</div>
-  </div>
-</div>
+    <div class="access-app-name">NTS <span>Field</span> Acceptance</div>
+    <div class="access-tagline">Telecom Site Documentation Platform</div>
 
-<!-- ════════════════════════════════════════
-     PAGE: LOGIN
-════════════════════════════════════════ -->
-<div id="page-login" class="page auth-page">
-  <div class="auth-header">
-    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
-    <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
-    <button class="back-btn" onclick="showPage('page-landing')">✕</button>
-  </div>
-  <div class="auth-body">
-    <div class="auth-card">
-      <h2>Welcome back</h2>
-      <p class="subtitle">Enter your approved email to access the platform.</p>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email" />
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-primary" onclick="handleLogin()">Login →</button>
-        <button class="btn btn-ghost" onclick="showPage('page-request')">Don't have access? Request it</button>
-      </div>
-    </div>
-  </div>
-  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
-</div>
+    <div class="access-card">
 
-<!-- ════════════════════════════════════════
-     PAGE: ACCESS REQUEST
-════════════════════════════════════════ -->
-<div id="page-request" class="page auth-page">
-  <div class="auth-header">
-    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
-    <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
-    <button class="back-btn" onclick="showPage('page-landing')">✕</button>
-  </div>
-  <div class="auth-body">
-    <div class="auth-card">
-      <h2>Request Access</h2>
-      <p class="subtitle">Submit your details. An administrator will review and approve your account.</p>
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="req-name" placeholder="First Last" autocomplete="name" />
+      <!-- STATE: form -->
+      <div id="state-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="acc-name" placeholder="First Last" autocomplete="name"
+            onkeydown="if(event.key==='Enter')document.getElementById('acc-email').focus()" />
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="acc-email" placeholder="your@email.com" autocomplete="email"
+            onkeydown="if(event.key==='Enter')handleAccessSubmit()" />
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="handleAccessSubmit()">
+          Continue →
+        </button>
+        <div class="access-note">
+          First time? We'll send your request for approval.<br>Already approved? You'll be logged in instantly.
+        </div>
       </div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="req-email" placeholder="your@email.com" autocomplete="email" />
+
+      <!-- STATE: pending -->
+      <div id="state-pending" style="display:none;">
+        <div class="pending-icon">⏳</div>
+        <div class="pending-title">Waiting for Approval</div>
+        <div class="pending-who" id="pending-who"></div>
+        <div class="pending-desc">
+          Your request has been submitted. An administrator will approve your account — this page checks automatically and will log you in the moment access is granted.
+        </div>
+        <div class="pending-check-row">
+          <div class="pulse-dot"></div>
+          <span id="pending-check-label">Checking in <span id="pending-countdown">20</span>s…</span>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:14px;font-size:13px;padding:10px;" onclick="resetAccessForm()">
+          ← Use a different email
+        </button>
       </div>
-      <div class="form-actions">
-        <button class="btn btn-primary" onclick="handleRequest()">Submit Request →</button>
-        <button class="btn btn-ghost" onclick="showPage('page-login')">Already have access? Login</button>
+
+      <!-- STATE: rejected -->
+      <div id="state-rejected" style="display:none;">
+        <div class="pending-icon">🚫</div>
+        <div class="pending-title" style="color:var(--error);">Access Denied</div>
+        <div class="pending-desc">Your access request was not approved. Please contact your administrator.</div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:14px;" onclick="resetAccessForm()">← Try again</button>
       </div>
+
     </div>
+    <div class="access-footer">Powered by Network Ticket Solution</div>
   </div>
-  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
 </div>
 
 <!-- ════════════════════════════════════════
@@ -1432,60 +1140,158 @@ async function gasCall(action, data = {}) {
 }
 
 // ════════════════════════════════════════════════════
-//  AUTH
+//  ACCESS FLOW — unified request + auto-login + polling
 // ════════════════════════════════════════════════════
-async function handleLogin() {
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  if (!email) { toast('Please enter your email.', 'error'); return; }
+let _pollTimer    = null;
+let _pollSeconds  = 20;
+let _pollInterval = null;
+let _savedEmail   = '';
+let _savedName    = '';
 
-  showSpinner('Verifying access…');
-  try {
-    const res = await gasCall('login', { email });
-    if (res.status === 'approved') {
-      APP.user = { name: res.name, email };
-      await saveState();
-      toast(`Welcome back, ${res.name}!`, 'success');
-      initApp();
-    } else if (res.status === 'pending') {
-      toast('Your account is pending approval. Please wait.', 'warning');
-    } else {
-      toast('Access denied. Email not found or rejected.', 'error');
-    }
-  } catch(e) {
-    toast('Unable to reach server. Check connection.', 'error');
-  } finally { hideSpinner(); }
+// Called on first visit or "use different email"
+function resetAccessForm() {
+  clearPoll();
+  _savedEmail = '';
+  _savedName  = '';
+  setState('form');
+  // Clear fields but pre-fill if localStorage has them
+  const stored = localStorage.getItem('nts_email') || '';
+  document.getElementById('acc-email').value = stored;
+  document.getElementById('acc-name').value  = '';
+  if (stored) document.getElementById('acc-name').focus();
+  else        document.getElementById('acc-name').focus();
 }
 
-async function handleRequest() {
-  const name  = document.getElementById('req-name').value.trim();
-  const email = document.getElementById('req-email').value.trim().toLowerCase();
-  if (!name || !email) { toast('Please fill all fields.', 'error'); return; }
-  if (!email.includes('@')) { toast('Invalid email address.', 'error'); return; }
+function setState(id) {
+  ['form', 'pending', 'rejected'].forEach(s => {
+    document.getElementById('state-' + s).style.display = s === id ? '' : 'none';
+  });
+}
 
-  showSpinner('Submitting request…');
+// Main entry point — handles both first-time request and returning user
+async function handleAccessSubmit() {
+  const name  = document.getElementById('acc-name').value.trim();
+  const email = document.getElementById('acc-email').value.trim().toLowerCase();
+
+  if (!email || !email.includes('@')) {
+    toast('Please enter a valid email address.', 'error'); return;
+  }
+
+  showSpinner('Checking access…');
   try {
-    const res = await gasCall('requestAccess', { name, email });
-    if (res.success) {
-      toast('Request submitted! An admin will review it shortly.', 'success', 5000);
-      document.getElementById('req-name').value = '';
-      document.getElementById('req-email').value = '';
-      showPage('page-login');
-    } else {
-      toast(res.message || 'Error submitting request.', 'error');
+    // First: check if already approved
+    const res = await gasCall('login', { email });
+
+    if (res.status === 'approved') {
+      // ✅ Auto-login immediately
+      APP.user = { name: res.name || name, email };
+      localStorage.setItem('nts_email', email);
+      await saveState();
+      hideSpinner();
+      toast(`Welcome, ${APP.user.name}!`, 'success');
+      initApp();
+      return;
     }
+
+    if (res.status === 'rejected') {
+      hideSpinner();
+      setState('rejected');
+      return;
+    }
+
+    // status === 'pending' or 'not_found'
+    // If not found → submit access request
+    if (res.status === 'not_found') {
+      if (!name) {
+        hideSpinner();
+        toast('Please enter your full name to request access.', 'error');
+        document.getElementById('acc-name').focus();
+        return;
+      }
+      const reqRes = await gasCall('requestAccess', { name, email });
+      if (!reqRes.success && reqRes.message !== 'This email already has a request on file.') {
+        hideSpinner();
+        toast(reqRes.message || 'Error submitting request.', 'error');
+        return;
+      }
+    }
+
+    // Pending — show waiting state + start polling
+    _savedEmail = email;
+    _savedName  = name;
+    localStorage.setItem('nts_email', email);
+    if (name) localStorage.setItem('nts_name', name);
+
+    hideSpinner();
+    document.getElementById('pending-who').textContent = email;
+    setState('pending');
+    startPoll();
+
+  } catch(err) {
+    hideSpinner();
+    toast('Connection error. Please try again.', 'error');
+  }
+}
+
+// ── POLLING ──
+function startPoll() {
+  clearPoll();
+  _pollSeconds = 20;
+  updateCountdown();
+  _pollInterval = setInterval(() => {
+    _pollSeconds--;
+    if (_pollSeconds <= 0) {
+      _pollSeconds = 20;
+      checkApproval();
+    }
+    updateCountdown();
+  }, 1000);
+}
+
+function clearPoll() {
+  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+}
+
+function updateCountdown() {
+  const el = document.getElementById('pending-countdown');
+  if (el) el.textContent = _pollSeconds;
+}
+
+async function checkApproval() {
+  if (!_savedEmail) return;
+  try {
+    const res = await gasCall('login', { email: _savedEmail });
+    if (res.status === 'approved') {
+      clearPoll();
+      APP.user = { name: res.name || _savedName, email: _savedEmail };
+      localStorage.setItem('nts_email', _savedEmail);
+      await saveState();
+      toast(`Access approved! Welcome, ${APP.user.name}!`, 'success', 4000);
+      initApp();
+    } else if (res.status === 'rejected') {
+      clearPoll();
+      setState('rejected');
+    }
+    // else still pending — keep polling
   } catch(e) {
-    toast('Unable to reach server. Check connection.', 'error');
-  } finally { hideSpinner(); }
+    // Network error — keep polling silently
+  }
 }
 
 function handleLogout() {
-  if (!confirm('Log out? Unsaved sessions will be restored on next login from this device.')) return;
-  APP.user = null;
+  if (!confirm('Log out?')) return;
+  clearPoll();
+  APP.user       = null;
   APP.siteNumber = null;
-  APP.photos = {};
-  APP.naStatus = {};
+  APP.photos     = {};
+  APP.naStatus   = {};
   saveState();
-  showPage('page-landing');
+  // Stay on access page, pre-fill email
+  setState('form');
+  const stored = localStorage.getItem('nts_email') || '';
+  document.getElementById('acc-email').value = stored;
+  document.getElementById('acc-name').value  = localStorage.getItem('nts_name') || '';
+  showPage('page-access');
 }
 
 // ════════════════════════════════════════════════════
@@ -2164,20 +1970,49 @@ async function startNewProject() {
   await initDB();
   await loadState();
 
-  // Update all logo images from config
+  // Update logos from config
   document.querySelectorAll('.app-logo').forEach(img => { img.src = CONFIG.LOGO_PATH; });
-  document.getElementById('landing-logo').src = CONFIG.LOGO_PATH;
-
-  if (APP.user && APP.user.email) {
-    initApp();
-  } else {
-    showPage('page-landing');
-  }
 
   // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  // ── Auto-login: if session already has approved user ──
+  if (APP.user && APP.user.email) {
+    // Silently re-verify with server (in case access was revoked)
+    showPage('page-access');
+    setState('form');
+    showSpinner('Signing in…');
+    try {
+      const res = await gasCall('login', { email: APP.user.email });
+      hideSpinner();
+      if (res.status === 'approved') {
+        // Still good — go straight to app
+        toast(`Welcome back, ${APP.user.name}!`, 'success', 2500);
+        initApp();
+        return;
+      }
+    } catch(e) {
+      hideSpinner();
+      // Offline or error — trust the cached session and go in
+      toast(`Welcome back, ${APP.user.name}!`, 'success', 2500);
+      initApp();
+      return;
+    }
+    // Access revoked — clear and show access page
+    APP.user = null;
+    await saveState();
+  }
+
+  // ── Pre-fill email from localStorage ──
+  const storedEmail = localStorage.getItem('nts_email') || '';
+  const storedName  = localStorage.getItem('nts_name')  || '';
+  document.getElementById('acc-email').value = storedEmail;
+  document.getElementById('acc-name').value  = storedName;
+
+  showPage('page-access');
+  setState('form');
 })();
 
 // Keyboard dismiss on mobile
