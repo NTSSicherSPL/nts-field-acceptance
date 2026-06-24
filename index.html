@@ -577,6 +577,88 @@
     .btn-camera:disabled{ opacity: 0.4; cursor: not-allowed; }
     .btn-camera.complete{ background: var(--success); }
 
+    /* ── INFO BUTTON ── */
+    .btn-info {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: rgba(41,170,225,0.08);
+      border: 1.5px solid rgba(41,170,225,0.25);
+      border-radius: 50%;
+      color: var(--brand);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s;
+      margin-left: auto;
+    }
+    .btn-info:active, .btn-info:hover {
+      background: rgba(41,170,225,0.18);
+      border-color: var(--brand);
+    }
+
+    /* ── INFO MODAL ── */
+    .info-modal-title {
+      font-family: var(--font-display);
+      font-size: 19px; font-weight: 700;
+      letter-spacing: 0.8px; color: var(--text);
+      margin-bottom: 4px;
+    }
+    .info-modal-cat {
+      font-size: 11px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 16px; font-weight: 600;
+    }
+    .info-instructions {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--brand);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+    .info-required-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(41,170,225,0.1);
+      border: 1px solid rgba(41,170,225,0.2);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px; font-weight: 600; color: var(--brand);
+      margin-bottom: 16px;
+    }
+    .info-images-label {
+      font-size: 11px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      font-weight: 600; margin-bottom: 10px;
+    }
+    .info-images-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 8px; margin-bottom: 16px;
+    }
+    .info-img-wrap {
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--card);
+      aspect-ratio: 4/3;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative;
+    }
+    .info-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .info-img-wrap .img-loading {
+      font-size: 22px; color: var(--text-dim);
+    }
+    .info-img-error {
+      font-size: 11px; color: var(--text-dim);
+      text-align: center; padding: 8px;
+    }
+    .info-no-content {
+      text-align: center; padding: 24px 16px;
+      font-size: 13px; color: var(--text-dim);
+    }
+
     /* ── N/A BUTTON ── */
     .btn-na {
       flex-shrink: 0;
@@ -1058,6 +1140,16 @@
 <!-- ════════════════════════════════════════
      MODALS
 ════════════════════════════════════════ -->
+<!-- Info Modal -->
+<div class="modal-overlay" id="modal-info">
+  <div class="modal" style="max-height:85vh;">
+    <button class="modal-close" onclick="closeModal('modal-info')">✕</button>
+    <div class="info-modal-cat" id="info-modal-cat">Category</div>
+    <div class="info-modal-title" id="info-modal-title">Subcategory</div>
+    <div id="info-modal-body"></div>
+  </div>
+</div>
+
 <!-- N/A Confirmation Modal -->
 <div class="modal-overlay" id="modal-na">
   <div class="modal">
@@ -1815,10 +1907,17 @@ function buildSubCard(cat, sub) {
       ✕ N/A
     </button>` : '';
 
+  // Info button — only if there's instructions or images
+  const hasInfo = !!(sub.instructions || sub.imageUrls);
+  const infoBtnHtml = hasInfo
+    ? `<button class="btn-info" onclick="showInfoModal('${catEsc}','${subEsc}')" title="View instructions">ℹ</button>`
+    : '';
+
   card.innerHTML = `
     <div class="sub-card-header">
       <span class="sub-name">${sub.subcategory}</span>
       ${countHtml}
+      ${infoBtnHtml}
     </div>
     <div class="photo-count-bar">
       <div class="photo-count-fill" style="width:${pct}%;background:${barColor}"></div>
@@ -1944,6 +2043,69 @@ async function removePhoto(key, idx) {
   refreshSubCard(key);
   updateOverallProgress();
   await saveState();
+}
+
+// ════════════════════════════════════════════════════
+//  INFO MODAL
+// ════════════════════════════════════════════════════
+function showInfoModal(cat, sub) {
+  // Find category data
+  const groups = getCategoryGroups();
+  const subs   = groups[cat] || [];
+  const subDef = subs.find(s => s.subcategory === sub);
+  if (!subDef) return;
+
+  document.getElementById('info-modal-cat').textContent   = cat;
+  document.getElementById('info-modal-title').textContent = sub;
+
+  const body = document.getElementById('info-modal-body');
+
+  // Required badge
+  let html = `<div class="info-required-badge">📷 ${subDef.required} photo${subDef.required !== 1 ? 's' : ''} required</div>`;
+
+  // Instructions text
+  if (subDef.instructions) {
+    html += `<div class="info-instructions">${subDef.instructions}</div>`;
+  }
+
+  // Sample images from Google Drive
+  if (subDef.imageUrls && subDef.imageUrls.trim()) {
+    const urls = subDef.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
+    if (urls.length > 0) {
+      html += `<div class="info-images-label">📸 Sample Photos</div>`;
+      html += `<div class="info-images-grid">`;
+      urls.forEach((url, i) => {
+        // Convert Google Drive share URL to direct embed URL
+        const embedUrl = driveUrlToEmbed(url);
+        html += `
+          <div class="info-img-wrap" onclick="openImgViewer('${embedUrl}')">
+            <img src="${embedUrl}" alt="Sample ${i+1}"
+              onerror="this.parentElement.innerHTML='<div class=\"info-img-error\">⚠️ Image unavailable</div>'"
+              loading="lazy" />
+          </div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  if (!subDef.instructions && (!subDef.imageUrls || !subDef.imageUrls.trim())) {
+    html = `<div class="info-no-content">ℹ️ No instructions added yet.<br><span style="font-size:11px;color:var(--text-dim)">Add instructions and image URLs in the Categories sheet.</span></div>`;
+  }
+
+  body.innerHTML = html;
+  showModal('modal-info');
+}
+
+function driveUrlToEmbed(url) {
+  // Convert various Google Drive URL formats to direct image URL
+  // Format: https://drive.google.com/file/d/FILE_ID/view
+  // Embed:  https://drive.google.com/thumbnail?id=FILE_ID&sz=w600
+  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) {
+    return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w600';
+  }
+  // Already direct or unknown format — use as-is
+  return url;
 }
 
 // ════════════════════════════════════════════════════
