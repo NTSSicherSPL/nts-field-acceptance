@@ -1,21 +1,15 @@
 /**
  * NTS Field Acceptance — Google Apps Script Backend
  * ═══════════════════════════════════════════════════
- * GATA CONFIGURAT — nu trebuie modificat nimic.
- *
- * PAȘI DEPLOY:
- * 1. Lipește acest cod în editorul script.google.com
+ * DEPLOY:
+ * 1. Lipește codul în script.google.com
  * 2. Salvează (Ctrl+S)
- * 3. Run > setupDatabase  (o singură dată, pentru a crea spreadsheet-ul)
- * 4. Deploy > Manage Deployments > editeaza deployment-ul existent
- *    SAU Deploy > New Deployment > Web App
+ * 3. Run > setupDatabase  (o singură dată)
+ * 4. Deploy > Manage Deployments > Edit > New Version > Deploy
  *    - Execute as: Me
- *    - Who has access: Anyone
+ *    - Who has access: Anyone (including anonymous)
  */
 
-// ═══════════════════════════════════════════════
-//  CONFIGURARE HARDCODATĂ
-// ═══════════════════════════════════════════════
 var DRIVE_FOLDER_ID  = '1ug6huCS_OZEbKzaO5d-WQ1hWC-XBFHMy';
 var SPREADSHEET_NAME = 'NTS Field Acceptance — Database';
 
@@ -33,7 +27,6 @@ function getSpreadsheet() {
   if (files.hasNext()) {
     return SpreadsheetApp.openById(files.next().getId());
   }
-  // Creează spreadsheet nou și inițializează
   var ss     = SpreadsheetApp.create(SPREADSHEET_NAME);
   var ssFile = DriveApp.getFileById(ss.getId());
   folder.addFile(ssFile);
@@ -46,8 +39,6 @@ function getSpreadsheet() {
 //  INIȚIALIZARE SPREADSHEET
 // ═══════════════════════════════════════════════
 function initSpreadsheet(ss) {
-
-  // ── USERS ──────────────────────────────────
   var usersSheet = ss.getSheetByName(SHEET_USERS);
   if (!usersSheet) usersSheet = ss.insertSheet(SHEET_USERS);
   else usersSheet.clearContents();
@@ -61,7 +52,6 @@ function initSpreadsheet(ss) {
     .requireValueInList(['Pending', 'Approved', 'Rejected'], true).build();
   usersSheet.getRange('C2:C1000').setDataValidation(statusRule);
 
-  // ── CATEGORIES ─────────────────────────────
   var catSheet = ss.getSheetByName(SHEET_CATEGORIES);
   if (!catSheet) catSheet = ss.insertSheet(SHEET_CATEGORIES);
   else catSheet.clearContents();
@@ -85,7 +75,6 @@ function initSpreadsheet(ss) {
     .requireValueInList(['TRUE', 'FALSE'], true).build();
   catSheet.getRange('D2:D1000').setDataValidation(activeRule);
 
-  // ── PROJECTS ───────────────────────────────
   var projSheet = ss.getSheetByName(SHEET_PROJECTS);
   if (!projSheet) projSheet = ss.insertSheet(SHEET_PROJECTS);
   else projSheet.clearContents();
@@ -93,7 +82,6 @@ function initSpreadsheet(ss) {
   styleHeader(projSheet, 8);
   [150,180,220,200,130,100,120,400].forEach(function(w,i){ projSheet.setColumnWidth(i+1,w); });
 
-  // ── NA_LOG ─────────────────────────────────
   var naSheet = ss.getSheetByName(SHEET_NA_LOG);
   if (!naSheet) naSheet = ss.insertSheet(SHEET_NA_LOG);
   else naSheet.clearContents();
@@ -101,11 +89,8 @@ function initSpreadsheet(ss) {
   styleHeader(naSheet, 7);
   [150,200,200,180,220,200,100].forEach(function(w,i){ naSheet.setColumnWidth(i+1,w); });
 
-  // Șterge Sheet1 implicit dacă există
   var def = ss.getSheetByName('Sheet1');
   if (def && ss.getSheets().length > 1) { try { ss.deleteSheet(def); } catch(e) {} }
-
-  Logger.log('Spreadsheet initializat: ' + ss.getUrl());
 }
 
 function styleHeader(sheet, numCols) {
@@ -119,10 +104,8 @@ function styleHeader(sheet, numCols) {
 
 // ═══════════════════════════════════════════════
 //  HTTP HANDLERS
-//  Notă: GAS Web App deployed cu "Anyone" nu
-//  necesită headere CORS manuale — platforma
-//  le adaugă automat. setHeader() nu este
-//  disponibil pe ContentService.TextOutput.
+//  Acceptă POST cu Content-Type: text/plain
+//  (evită CORS preflight din browsere mobile)
 // ═══════════════════════════════════════════════
 function doGet(e) {
   return handleRequest(e);
@@ -141,11 +124,29 @@ function jsonOut(obj) {
 function handleRequest(e) {
   try {
     var data = {};
-    if (e && e.postData && e.postData.contents) {
-      data = JSON.parse(e.postData.contents);
-    } else if (e && e.parameter) {
+
+    // GET cu ?payload=JSON (metoda principala - evita CORS/redirect)
+    if (e && e.parameter && e.parameter.payload) {
+      try {
+        data = JSON.parse(e.parameter.payload);
+      } catch(parseErr) {
+        return jsonOut({ error: 'JSON parse error: ' + parseErr.message });
+      }
+    }
+    // POST fallback
+    else if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch(parseErr) {
+        return jsonOut({ error: 'POST parse error: ' + parseErr.message });
+      }
+    }
+    // Parametri simpli GET
+    else if (e && e.parameter) {
       data = e.parameter;
     }
+
+    Logger.log('Action: ' + data.action + ' | Data: ' + JSON.stringify(data).substring(0, 300));
 
     var result = {};
     switch (data.action) {
@@ -160,20 +161,23 @@ function handleRequest(e) {
       default:
         result = { error: 'Unknown action: ' + (data.action || 'none') };
     }
+
+    Logger.log('Result: ' + JSON.stringify(result).substring(0, 300));
     return jsonOut(result);
 
   } catch (err) {
-    return jsonOut({ error: err.message, stack: err.stack });
+    Logger.log('ERROR: ' + err.message + '\n' + err.stack);
+    return jsonOut({ error: err.message });
   }
 }
 
 // ═══════════════════════════════════════════════
-//  SETUP DB — rulează din editor o singură dată
+//  SETUP — rulează manual o singură dată
 // ═══════════════════════════════════════════════
 function setupDatabase() {
   var ss = getSpreadsheet();
-  Logger.log('SUCCESS — Spreadsheet URL: ' + ss.getUrl());
-  Logger.log('Spreadsheet ID: ' + ss.getId());
+  Logger.log('SUCCESS — URL: ' + ss.getUrl());
+  Logger.log('ID: ' + ss.getId());
 }
 
 function actionSetupDB() {
@@ -190,10 +194,13 @@ function actionLogin(data) {
 
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_USERS);
-  if (!sheet) return { status: 'error', message: 'Users sheet not found' };
+  if (!sheet) return { status: 'not_found' };
 
-  var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: 'not_found' };
+
+  var rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+  for (var i = 0; i < rows.length; i++) {
     var rowEmail  = (rows[i][1] || '').toLowerCase().trim();
     var rowStatus = (rows[i][2] || '').trim().toLowerCase();
     var rowName   = (rows[i][0] || '').trim();
@@ -212,19 +219,33 @@ function actionLogin(data) {
 function actionRequestAccess(data) {
   var name  = (data.name  || '').trim();
   var email = (data.email || '').toLowerCase().trim();
-  if (!name || !email) return { success: false, message: 'Name and email required' };
+
+  if (!name)  return { success: false, message: 'Name is required' };
+  if (!email) return { success: false, message: 'Email is required' };
 
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_USERS);
   if (!sheet) return { success: false, message: 'Users sheet not found' };
 
-  var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
-    if ((rows[i][1] || '').toLowerCase().trim() === email) {
-      return { success: false, message: 'This email already has a request on file.' };
+  // Verifică dacă există deja
+  var lastRow = sheet.getLastRow();
+  if (lastRow >= 2) {
+    var rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if ((rows[i][1] || '').toLowerCase().trim() === email) {
+        var existingStatus = (rows[i][2] || '').trim().toLowerCase();
+        if (existingStatus === 'approved') {
+          return { success: false, message: 'already_approved' };
+        }
+        return { success: false, message: 'This email already has a request on file.' };
+      }
     }
   }
-  sheet.appendRow([name, email, 'Pending', new Date().toISOString()]);
+
+  var now = new Date();
+  sheet.appendRow([name, email, 'Pending', now.toISOString()]);
+  Logger.log('New access request: ' + name + ' <' + email + '>');
+
   return { success: true, message: 'Request submitted successfully.' };
 }
 
@@ -236,9 +257,12 @@ function actionGetCategories() {
   var sheet = ss.getSheetByName(SHEET_CATEGORIES);
   if (!sheet) return { categories: [] };
 
-  var rows       = sheet.getDataRange().getValues();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { categories: [] };
+
+  var rows       = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
   var categories = [];
-  for (var i = 1; i < rows.length; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     if (!row[0] || !row[1]) continue;
     var active = String(row[3]).toUpperCase();
@@ -315,11 +339,14 @@ function actionGetNALog(data) {
   var sheet = ss.getSheetByName(SHEET_NA_LOG);
   if (!sheet) return { entries: [] };
 
-  var rows    = sheet.getDataRange().getValues();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { entries: [] };
+
+  var rows    = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
   var entries = [];
   var filter  = siteNumber ? ('Site_' + siteNumber) : null;
 
-  for (var i = 1; i < rows.length; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     if (!row[0]) continue;
     if (filter && row[0] !== filter) continue;
@@ -356,13 +383,15 @@ function actionSubmitProject(data) {
     date, totalPhotos, totalNA, 'Completed', naDetailsStr
   ]);
 
-  // Flush N/A logs lipsă (scenariu offline)
   if (naDetails.length) {
     var naSheet = ss.getSheetByName(SHEET_NA_LOG);
     if (naSheet) {
-      var existing    = naSheet.getDataRange().getValues();
+      var lastRow     = naSheet.getLastRow();
       var existingSet = {};
-      existing.slice(1).forEach(function(r){ existingSet[r[0]+'|'+r[1]+'|'+r[2]] = true; });
+      if (lastRow >= 2) {
+        var existing = naSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+        existing.forEach(function(r){ existingSet[r[0]+'|'+r[1]+'|'+r[2]] = true; });
+      }
       naDetails.forEach(function(n) {
         var k = 'Site_' + siteNumber + '|' + n.category + '|' + n.subcategory;
         if (!existingSet[k]) {
@@ -376,7 +405,7 @@ function actionSubmitProject(data) {
 }
 
 // ═══════════════════════════════════════════════
-//  HELPER: Obține sau creează subfolder
+//  HELPER
 // ═══════════════════════════════════════════════
 function getOrCreateFolder(parent, name) {
   var folders = parent.getFoldersByName(name);
