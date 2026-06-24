@@ -105,14 +105,13 @@
     }
 
     /* ══════════════════════════════
-       ACCESS PAGE
+       ACCESS PAGE — compact mobile
     ══════════════════════════════ */
     #page-access {
       background: linear-gradient(160deg, #0a1628 0%, #0d1f3c 55%, #0a1628 100%);
-      position: relative;
-      overflow: hidden;
-      justify-content: center;
-      align-items: center;
+      position: relative; overflow: hidden;
+      justify-content: center; align-items: center;
+      min-height: 100vh;
     }
     .access-bg {
       position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
@@ -120,13 +119,15 @@
     .access-content {
       position: relative; z-index: 1;
       display: flex; flex-direction: column; align-items: center;
-      padding: 40px 24px 32px;
-      width: 100%; max-width: 420px;
+      padding: 24px 20px 20px;
+      width: 100%; max-width: 400px;
+      min-height: 100vh;
+      justify-content: center;
     }
     .access-logo-wrap {
-      width: 160px; height: 100px;
+      width: 100px; height: 64px;
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 12px;
+      margin-bottom: 6px; flex-shrink: 0;
     }
     .access-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
     /* Logo negru inversat la alb pe background inchis */
@@ -135,82 +136,80 @@
     .auth-header-logo { filter: brightness(0) invert(1); }
     .access-app-name {
       font-family: var(--font-display);
-      font-size: 26px; font-weight: 700;
+      font-size: 20px; font-weight: 700;
       letter-spacing: 2px; text-transform: uppercase;
-      color: var(--text); text-align: center; margin-bottom: 4px;
+      color: var(--text); text-align: center; margin-bottom: 2px;
     }
     .access-app-name span { color: var(--brand); }
     .access-tagline {
-      font-size: 12px; font-weight: 500;
+      font-size: 10px; font-weight: 500;
       color: var(--brand); letter-spacing: 1px;
       text-align: center; text-transform: uppercase;
-      margin-bottom: 28px;
+      margin-bottom: 16px;
     }
     .access-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 28px 24px;
+      padding: 20px 18px;
       width: 100%;
       box-shadow: var(--shadow);
     }
     .access-note {
-      font-size: 12px; color: var(--text-dim);
-      text-align: center; margin-top: 14px; line-height: 1.5;
+      font-size: 11px; color: var(--text-dim);
+      text-align: center; margin-top: 10px; line-height: 1.45;
     }
     .access-footer {
-      margin-top: 28px;
-      font-size: 11px; color: var(--text-dim);
+      margin-top: 16px;
+      font-size: 10px; color: var(--text-dim);
       letter-spacing: 0.5px; text-align: center;
     }
-
     /* Pending state */
-    .pending-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    .pending-icon { font-size: 36px; text-align: center; margin-bottom: 8px; }
     .pending-title {
       font-family: var(--font-display);
-      font-size: 20px; font-weight: 700;
+      font-size: 18px; font-weight: 700;
       letter-spacing: 1px; color: var(--text);
-      text-align: center; margin-bottom: 6px;
+      text-align: center; margin-bottom: 4px;
     }
     .pending-who {
-      font-size: 13px; color: var(--brand);
-      text-align: center; font-weight: 600;
-      margin-bottom: 12px;
+      font-size: 12px; color: var(--brand);
+      text-align: center; font-weight: 600; margin-bottom: 10px;
     }
     .pending-desc {
-      font-size: 13px; color: var(--text-muted);
-      line-height: 1.6; text-align: center; margin-bottom: 16px;
+      font-size: 12px; color: var(--text-muted);
+      line-height: 1.5; text-align: center; margin-bottom: 12px;
     }
     .pending-check-row {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      font-size: 12px; color: var(--text-dim);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 11px; color: var(--text-dim);
       background: rgba(41,170,225,0.06);
       border: 1px solid rgba(41,170,225,0.15);
-      border-radius: 8px; padding: 10px 16px;
+      border-radius: 8px; padding: 8px 14px;
     }
     .pulse-dot {
-      width: 8px; height: 8px; border-radius: 50%;
+      width: 7px; height: 7px; border-radius: 50%;
       background: var(--brand); flex-shrink: 0;
       animation: pulse 1.5s ease-in-out infinite;
     }
-
-    /* Auth pages — keep for app header reuse */
+    /* Auth header */
     .auth-header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
-      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .auth-header-logo { width: 48px; height: 32px; object-fit: contain; }
+    .auth-header-logo { width: 40px; height: 26px; object-fit: contain; }
     .auth-header-title {
       font-family: var(--font-display);
-      font-size: 16px; font-weight: 700;
+      font-size: 14px; font-weight: 700;
       letter-spacing: 1.5px; color: var(--text);
     }
     .auth-header-title span { color: var(--brand); }
+    /* form-group reduced spacing */
+    .form-group { margin-bottom: 12px; }
 
-    
-    /* ══════════════════════════════
+        /* ══════════════════════════════
        BUTTONS
     ══════════════════════════════ */
     .btn {
@@ -378,32 +377,125 @@
       margin-bottom: 24px; line-height: 1.5;
     }
 
-    /* ── CATEGORY CARDS ── */
+    /* ── CATEGORY PAGE NAV ── */
     .app-content {
-      padding: 16px; display: flex;
-      flex-direction: column; gap: 12px;
-      padding-bottom: 100px;
+      padding: 0; display: flex;
+      flex-direction: column;
+      flex: 1;
+      padding-bottom: 80px;
     }
+
+    /* Step indicator bar */
+    .cat-stepper {
+      display: flex; align-items: center;
+      gap: 0; padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .cat-stepper::-webkit-scrollbar { display: none; }
+    .cat-step {
+      display: flex; align-items: center; gap: 0;
+      flex-shrink: 0;
+    }
+    .cat-step-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      background: var(--card); border: 2px solid var(--border);
+      color: var(--text-dim); cursor: pointer;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .cat-step-dot.active {
+      background: var(--brand); border-color: var(--brand);
+      color: #fff; box-shadow: 0 0 12px rgba(41,170,225,0.4);
+    }
+    .cat-step-dot.done {
+      background: rgba(34,197,94,0.15); border-color: var(--success);
+      color: var(--success);
+    }
+    .cat-step-dot.na-done {
+      background: var(--na-bg); border-color: var(--na-border);
+      color: var(--na);
+    }
+    .cat-step-line {
+      width: 20px; height: 2px;
+      background: var(--border); flex-shrink: 0;
+    }
+    .cat-step-line.done { background: var(--success); }
+
+    /* Category page */
+    .cat-page {
+      display: none; flex-direction: column;
+      padding: 16px; gap: 12px;
+    }
+    .cat-page.active { display: flex; }
+
+    .cat-page-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .cat-page-icon { font-size: 24px; }
+    .cat-page-info { flex: 1; }
+    .cat-page-name {
+      font-family: var(--font-display);
+      font-size: 18px; font-weight: 700;
+      letter-spacing: 0.8px; color: var(--text);
+    }
+    .cat-page-progress {
+      font-size: 11px; color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .cat-page-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 12px; border-radius: 99px;
+      background: var(--border); color: var(--text-muted);
+    }
+    .cat-page-badge.complete { background: rgba(34,197,94,0.15); color: var(--success); }
+    .cat-page-badge.partial  { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .cat-page-badge.na       { background: var(--na-bg); color: var(--na); }
+
+    .subcategory-list { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Next / Prev navigation */
+    .cat-nav-row {
+      display: flex; gap: 10px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      position: sticky; bottom: 0; z-index: 50;
+    }
+    .btn-cat-prev {
+      background: var(--card); color: var(--text-muted);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px; font-size: 14px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s;
+    }
+    .btn-cat-prev:active { background: var(--card-hover); }
+    .btn-cat-next {
+      flex: 1;
+      background: var(--brand); color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 14px 18px; font-size: 15px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s;
+    }
+    .btn-cat-next:active { background: var(--brand-dark); }
+    .btn-cat-next.complete { background: var(--success); }
+    .btn-cat-next:disabled { opacity: 0.4; cursor: not-allowed; }
+
     .category-section {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       overflow: hidden;
-    }
-    .category-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .category-icon { font-size: 22px; }
-    .category-title {
-      flex: 1;
-      font-family: var(--font-display);
-      font-size: 17px; font-weight: 700;
-      letter-spacing: 0.8px; color: var(--text);
     }
     .category-badge {
       font-size: 11px; font-weight: 700;
@@ -413,9 +505,6 @@
     .category-badge.complete { background: rgba(34,197,94,0.15); color: var(--success); }
     .category-badge.partial  { background: rgba(245,158,11,0.15); color: var(--warning); }
     .category-badge.na       { background: var(--na-bg); color: var(--na); }
-    .chevron { font-size: 16px; color: var(--text-dim); transition: transform 0.2s; }
-    .category-section.expanded .chevron { transform: rotate(180deg); }
-    .subcategory-list { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 
     /* ── SUB CARDS ── */
     .sub-card {
@@ -635,35 +724,77 @@
     }
 
     /* ── SUCCESS PAGE ── */
+    #page-success {
+      background: var(--bg);
+    }
     .success-screen {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 48px 24px; text-align: center;
+      padding: 40px 24px; text-align: center;
     }
-    .success-icon { font-size: 72px; margin-bottom: 16px; }
+    .success-checkmark {
+      width: 80px; height: 80px;
+      background: rgba(34,197,94,0.1);
+      border: 2px solid rgba(34,197,94,0.3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .success-checkmark svg { width: 40px; height: 40px; }
     .success-screen h2 {
       font-family: var(--font-display);
-      font-size: 26px; font-weight: 700;
-      color: var(--success); margin-bottom: 8px; letter-spacing: 1px;
+      font-size: 28px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px;
+      letter-spacing: 1.5px; text-transform: uppercase;
     }
-    .success-screen p {
+    .success-screen h2 span { color: var(--success); }
+    .success-screen > p {
       font-size: 14px; color: var(--text-muted);
-      line-height: 1.6; max-width: 320px; margin-bottom: 32px;
+      line-height: 1.65; max-width: 300px; margin-bottom: 28px;
     }
     .success-meta {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 16px 20px;
-      width: 100%; max-width: 320px;
-      text-align: left; margin-bottom: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%; max-width: 360px;
+      overflow: hidden;
+      margin-bottom: 28px;
+      text-align: left;
     }
-    .success-meta-row {
-      display: flex; justify-content: space-between;
-      padding: 6px 0; font-size: 13px;
+    .success-meta-header {
+      background: var(--card);
       border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      font-size: 11px; font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .success-meta-body { padding: 4px 0; }
+    .success-meta-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 11px 18px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(30,58,110,0.5);
     }
     .success-meta-row:last-child { border-bottom: none; }
-    .success-meta-row .label { color: var(--text-muted); }
-    .success-meta-row .val   { color: var(--text); font-weight: 600; }
+    .success-meta-row .label {
+      color: var(--text-muted); font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .success-meta-row .label .icon { font-size: 14px; opacity: 0.7; }
+    .success-meta-row .val {
+      color: var(--text); font-weight: 700; font-size: 13px;
+    }
+    .success-meta-row .val.green { color: var(--success); }
+    .success-meta-row .val.orange { color: var(--na); }
+    .success-divider {
+      height: 1px; background: var(--border); margin: 0;
+    }
+    .success-actions {
+      display: flex; flex-direction: column; gap: 10px;
+      width: 100%; max-width: 360px;
+    }
 
     /* ── SPINNER ── */
     .spinner-overlay {
@@ -683,10 +814,18 @@
 
         /* ── RESPONSIVE ── */
     @media (min-width: 768px) {
-      .access-content { padding-top: 56px; }
-      .access-logo-wrap { width: 200px; height: 128px; }
-      .access-app-name { font-size: 30px; }
-      .access-card { padding: 36px 32px; }
+      .access-logo-wrap { width: 140px; height: 90px; }
+      .access-app-name { font-size: 24px; }
+      .access-card { padding: 28px 26px; }
+      .access-content { padding: 32px 24px; }
+    }
+    @media (max-height: 680px) {
+      .access-logo-wrap { width: 70px; height: 44px; margin-bottom: 4px; }
+      .access-app-name { font-size: 17px; }
+      .access-tagline { margin-bottom: 10px; font-size: 9px; }
+      .access-card { padding: 16px 16px; }
+      .form-group { margin-bottom: 8px; }
+      .access-footer { margin-top: 10px; }
     }
 
     /* Utility */
@@ -856,15 +995,16 @@
     </div>
   </div>
 
-  <!-- MAIN CONTENT (categories) -->
+  <!-- MAIN CONTENT -->
   <div class="app-content" id="app-content" style="display:none;">
+    <!-- Step indicator -->
+    <div class="cat-stepper" id="cat-stepper"></div>
+    <!-- Category pages rendered here -->
     <div id="categories-list"></div>
-
-    <div class="submit-section" id="submit-section" style="display:none;">
-      <h3>✅ Documentation Complete</h3>
-      <p>All categories and subcategories are complete — either by photos or marked N/A. You can now submit the project.</p>
-      <div id="submit-summary" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;"></div>
-      <button class="btn btn-success btn-lg" onclick="handleSubmit()">📤 Submit Project</button>
+    <!-- Nav row (prev/next) -->
+    <div class="cat-nav-row" id="cat-nav-row">
+      <button class="btn-cat-prev" id="btn-prev" onclick="catNavPrev()">← Prev</button>
+      <button class="btn-cat-next" id="btn-next" onclick="catNavNext()">Next →</button>
     </div>
   </div>
 
@@ -888,13 +1028,31 @@
     <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
   </div>
   <div class="success-screen">
-    <div class="success-icon">🎉</div>
-    <h2>Project Submitted!</h2>
-    <p>All photos have been uploaded and the project has been recorded successfully.</p>
-    <div class="success-meta" id="success-meta"></div>
-    <button class="btn btn-primary" onclick="startNewProject()">Start New Project</button>
+
+    <!-- Checkmark profesional SVG -->
+    <div class="success-checkmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 13l4 4L19 7" stroke="#22c55e" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <h2>Documentation <span>Complete</span></h2>
+    <p>Site acceptance documentation has been submitted and recorded successfully in the system.</p>
+
+    <div class="success-meta" id="success-meta">
+      <div class="success-meta-header">Submission Summary</div>
+      <div class="success-meta-body" id="success-meta-body"></div>
+    </div>
+
+    <div class="success-actions">
+      <button class="btn btn-primary btn-lg" onclick="startNewProject()">
+        Start New Site →
+      </button>
+    </div>
+
   </div>
-  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
+  <div class="landing-footer" style="padding:20px 16px;text-align:center;">Powered by Network Ticket Solution</div>
 </div>
 
 <!-- ════════════════════════════════════════
@@ -1398,49 +1556,170 @@ function getCategoryGroups() {
   return groups;
 }
 
+// ── CATEGORY PAGE NAVIGATION STATE ──
+let _currentCatIndex = 0;
+
+function getCatNames() {
+  return Object.keys(getCategoryGroups());
+}
+
 function renderCategories() {
-  const groups = getCategoryGroups();
+  const groups   = getCategoryGroups();
+  const catNames = Object.keys(groups);
   const container = document.getElementById('categories-list');
   container.innerHTML = '';
 
-  let catIndex = 0;
-  for (const [cat, subs] of Object.entries(groups)) {
-    const catEl = buildCategoryEl(cat, subs, catIndex === 0);
-    container.appendChild(catEl);
-    catIndex++;
-  }
+  // Build one .cat-page per category
+  catNames.forEach((cat, idx) => {
+    const subs = groups[cat];
+    const page = buildCategoryPage(cat, subs, idx);
+    container.appendChild(page);
+  });
+
+  renderStepper();
+  showCatPage(_currentCatIndex);
   updateSubmitButton();
 }
 
-function buildCategoryEl(cat, subs, expanded) {
-  const total = subs.length;
-  const done  = subs.filter(s => isSubComplete(cat, s)).length;
-  const naDone = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+function renderStepper() {
+  const groups   = getCategoryGroups();
+  const catNames = Object.keys(groups);
+  const stepper  = document.getElementById('cat-stepper');
+  stepper.innerHTML = '';
 
-  const section = document.createElement('div');
-  section.className = 'category-section' + (expanded ? ' expanded' : '');
-  section.dataset.cat = cat;
+  catNames.forEach((cat, idx) => {
+    const subs    = groups[cat];
+    const allDone = subs.every(s => isSubComplete(cat, s));
+    const anyNA   = subs.some(s => APP.naStatus[photoKey(cat, s.subcategory)]);
+    const anyDone = subs.some(s => isSubComplete(cat, s));
 
-  let badgeClass = '', badgeText = `${done}/${total}`;
-  if (done === total)      badgeClass = 'complete';
-  else if (naDone > 0)    badgeClass = 'na';
-  else if (done > 0)      badgeClass = 'partial';
+    let dotClass = '';
+    if (allDone)                    dotClass = anyNA && allDone ? 'na-done' : 'done';
+    else if (idx === _currentCatIndex) dotClass = 'active';
 
-  section.innerHTML = `
-    <div class="category-header" onclick="toggleCategory(this)">
-      <span class="category-icon">${getCatIcon(cat)}</span>
-      <span class="category-title">${cat}</span>
-      <span class="category-badge ${badgeClass}">${badgeText} subcategories</span>
-      <span class="chevron">▼</span>
+    // Line before
+    if (idx > 0) {
+      const prevDone = Object.keys(groups).slice(0,idx).every(c =>
+        groups[c].every(s => isSubComplete(c,s))
+      );
+      const line = document.createElement('div');
+      line.className = 'cat-step-line' + (prevDone ? ' done' : '');
+      stepper.appendChild(line);
+    }
+
+    const step = document.createElement('div');
+    step.className = 'cat-step';
+    const dot = document.createElement('div');
+    dot.className = 'cat-step-dot ' + dotClass;
+    dot.title = cat;
+    dot.textContent = allDone ? '✓' : (idx + 1);
+    dot.onclick = () => { _currentCatIndex = idx; showCatPage(idx); };
+    step.appendChild(dot);
+    stepper.appendChild(step);
+  });
+}
+
+function showCatPage(idx) {
+  _currentCatIndex = idx;
+  const pages  = document.querySelectorAll('.cat-page');
+  const groups = getCategoryGroups();
+  const catNames = Object.keys(groups);
+
+  pages.forEach((p, i) => p.classList.toggle('active', i === idx));
+
+  // Update stepper active state
+  renderStepper();
+
+  // Scroll stepper to active dot
+  const dots = document.querySelectorAll('.cat-step-dot');
+  if (dots[idx]) dots[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+  // Update nav buttons
+  const prevBtn = document.getElementById('btn-prev');
+  const nextBtn = document.getElementById('btn-next');
+  const isLast  = idx === catNames.length - 1;
+  const cat     = catNames[idx];
+  const subs    = groups[cat] || [];
+  const catDone = subs.every(s => isSubComplete(cat, s));
+
+  prevBtn.style.display = idx === 0 ? 'none' : 'flex';
+
+  if (isLast) {
+    // Check if ALL categories done
+    const allCatsDone = catNames.every(c => groups[c].every(s => isSubComplete(c, s)));
+    if (allCatsDone && APP.uploadQueue.length === 0) {
+      nextBtn.textContent = '📤 Submit Project';
+      nextBtn.className   = 'btn-cat-next complete';
+      nextBtn.disabled    = false;
+      nextBtn.onclick     = handleSubmit;
+    } else {
+      nextBtn.innerHTML = catDone ? '⏳ Uploading…' : '📷 Complete All Photos';
+      nextBtn.className = 'btn-cat-next';
+      nextBtn.disabled  = !catDone;
+      nextBtn.onclick   = null;
+    }
+  } else {
+    nextBtn.innerHTML = catDone
+      ? (getCatNames()[idx+1] + ' <span style="opacity:.7">→</span>')
+      : '📷 Complete to Continue';
+    nextBtn.className = 'btn-cat-next' + (catDone ? ' complete' : '');
+    nextBtn.disabled  = !catDone;
+    nextBtn.onclick   = catNavNext;
+  }
+
+  // Scroll to top of content
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function catNavNext() {
+  const catNames = getCatNames();
+  if (_currentCatIndex < catNames.length - 1) {
+    showCatPage(_currentCatIndex + 1);
+  }
+}
+
+function catNavPrev() {
+  if (_currentCatIndex > 0) {
+    showCatPage(_currentCatIndex - 1);
+  }
+}
+
+function buildCategoryPage(cat, subs, idx) {
+  const total  = subs.length;
+  const done   = subs.filter(s => isSubComplete(cat, s)).length;
+  const allDone = done === total;
+  const naDone  = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+
+  let badgeClass = '', badgeText = done + '/' + total + ' done';
+  if (allDone)      badgeClass = 'complete';
+  else if (naDone > 0) badgeClass = 'na';
+  else if (done > 0)   badgeClass = 'partial';
+
+  const page = document.createElement('div');
+  page.className = 'cat-page';
+  page.dataset.cat = cat;
+  page.dataset.idx = idx;
+
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  page.innerHTML = `
+    <div class="cat-page-header">
+      <span class="cat-page-icon">\${getCatIcon(cat)}</span>
+      <div class="cat-page-info">
+        <div class="cat-page-name">\${cat}</div>
+        <div class="cat-page-progress">\${done} of \${total} subcategories complete</div>
+      </div>
+      <span class="cat-page-badge \${badgeClass}">\${done}/\${total}</span>
     </div>
-    <div class="subcategory-list" id="sublist-${slugify(cat)}" style="${expanded ? '' : 'display:none'}"></div>
+    <div class="subcategory-list" id="sublist-\${idx}"></div>
   `;
 
-  const subList = section.querySelector('.subcategory-list');
-  subs.forEach(s => { subList.appendChild(buildSubCard(cat, s)); });
+  const subList = page.querySelector('.subcategory-list');
+  subs.forEach(s => subList.appendChild(buildSubCard(cat, s)));
 
-  return section;
+  return page;
 }
+
 
 function getCatIcon(cat) {
   const map = {
@@ -1454,13 +1733,7 @@ function getCatIcon(cat) {
   return '🗂️';
 }
 
-function toggleCategory(header) {
-  const section = header.closest('.category-section');
-  const list    = section.querySelector('.subcategory-list');
-  const isOpen  = section.classList.contains('expanded');
-  section.classList.toggle('expanded', !isOpen);
-  list.style.display = isOpen ? 'none' : 'flex';
-}
+// toggleCategory removed — using page navigation
 
 function isSubComplete(cat, sub) {
   const key = photoKey(cat, sub.subcategory);
@@ -1856,29 +2129,38 @@ function refreshSubCard(key) {
   const el = document.querySelector(`.sub-card[data-key="${CSS.escape(key)}"]`);
   if (!el) return;
   const [cat, sub] = key.split('|||');
-  const groups = getCategoryGroups();
+  const groups  = getCategoryGroups();
   const catSubs = groups[cat] || [];
   const subDef  = catSubs.find(s => s.subcategory === sub);
   if (!subDef) return;
-  const newCard = buildSubCard(cat, subDef);
-  el.replaceWith(newCard);
+  el.replaceWith(buildSubCard(cat, subDef));
 }
 
 function updateCategoryBadge(cat) {
-  const section = document.querySelector(`.category-section[data-cat="${CSS.escape(cat)}"]`);
-  if (!section) return;
-  const groups  = getCategoryGroups();
-  const subs    = groups[cat] || [];
-  const total   = subs.length;
-  const done    = subs.filter(s => isSubComplete(cat, s)).length;
-  const naDone  = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
-  const badge   = section.querySelector('.category-badge');
-  badge.textContent = `${done}/${total} subcategories`;
-  let cls = '';
-  if (done === total)   cls = 'complete';
-  else if (naDone > 0) cls = 'na';
-  else if (done > 0)   cls = 'partial';
-  badge.className = `category-badge ${cls}`;
+  // Update cat-page header badge
+  const groups = getCategoryGroups();
+  const subs   = groups[cat] || [];
+  const total  = subs.length;
+  const done   = subs.filter(s => isSubComplete(cat, s)).length;
+  const naDone = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+
+  const page  = document.querySelector(`.cat-page[data-cat="${CSS.escape(cat)}"]`);
+  if (!page) return;
+  const badge = page.querySelector('.cat-page-badge');
+  const info  = page.querySelector('.cat-page-progress');
+  if (badge) {
+    badge.textContent = done + '/' + total;
+    let cls = '';
+    if (done === total)   cls = 'complete';
+    else if (naDone > 0) cls = 'na';
+    else if (done > 0)   cls = 'partial';
+    badge.className = 'cat-page-badge ' + cls;
+  }
+  if (info) info.textContent = done + ' of ' + total + ' subcategories complete';
+
+  // Refresh stepper + nav buttons
+  renderStepper();
+  showCatPage(_currentCatIndex);
 }
 
 function updateOverallProgress() {
@@ -1898,25 +2180,9 @@ function updateOverallProgress() {
 }
 
 function updateSubmitButton() {
-  const groups = getCategoryGroups();
-  let allDone = true, photoCount = 0, naCount = 0;
-  for (const [cat, subs] of Object.entries(groups)) {
-    subs.forEach(s => {
-      if (!isSubComplete(cat, s)) { allDone = false; return; }
-      const k = photoKey(cat, s.subcategory);
-      if (APP.naStatus[k]) naCount++;
-      else photoCount++;
-    });
-  }
-  const hasQueue = APP.uploadQueue.length > 0;
-  const show = allDone && !hasQueue;
-  document.getElementById('submit-section').style.display = show ? 'block' : 'none';
-  if (show) {
-    const parts = [];
-    if (photoCount) parts.push(`<span style="color:var(--success)">✓ ${photoCount} completed with photos</span>`);
-    if (naCount)    parts.push(`<span style="color:var(--na)">N/A ${naCount} marked not applicable</span>`);
-    document.getElementById('submit-summary').innerHTML = parts.join(' &nbsp;·&nbsp; ');
-  }
+  // Refresh current page nav buttons (handles submit state on last page)
+  const catNames = getCatNames();
+  if (catNames.length > 0) showCatPage(_currentCatIndex);
 }
 
 // ════════════════════════════════════════════════════
@@ -1957,13 +2223,28 @@ async function handleSubmit() {
     });
 
     if (res.success) {
-      document.getElementById('success-meta').innerHTML = `
-        <div class="success-meta-row"><span class="label">Site</span><span class="val">Site_${APP.siteNumber}</span></div>
-        <div class="success-meta-row"><span class="label">Technician</span><span class="val">${APP.user?.name}</span></div>
-        <div class="success-meta-row"><span class="label">Photos Uploaded</span><span class="val">${totalPhotos}</span></div>
-        <div class="success-meta-row"><span class="label" style="color:var(--na)">Marked N/A</span><span class="val" style="color:var(--na)">${totalNA} items</span></div>
-        <div class="success-meta-row"><span class="label">Date</span><span class="val">${new Date().toLocaleDateString()}</span></div>
-      `;
+      document.getElementById('success-meta-body').innerHTML = `
+        <div class="success-meta-row">
+          <span class="label"><span class="icon">🏗️</span>Site</span>
+          <span class="val">Site_${APP.siteNumber}</span>
+        </div>
+        <div class="success-meta-row">
+          <span class="label"><span class="icon">👤</span>Technician</span>
+          <span class="val">${APP.user?.name || '—'}</span>
+        </div>
+        <div class="success-meta-row">
+          <span class="label"><span class="icon">📷</span>Photos Uploaded</span>
+          <span class="val green">${totalPhotos} photos</span>
+        </div>
+        <div class="success-meta-row">
+          <span class="label"><span class="icon">✕</span>Marked N/A</span>
+          <span class="val ${totalNA > 0 ? 'orange' : ''}">${totalNA} item${totalNA !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="success-meta-row">
+          <span class="label"><span class="icon">📅</span>Submitted</span>
+          <span class="val">${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+        </div>
+      `
       showPage('page-success');
     } else {
       toast('Submission failed: ' + (res.message || 'Unknown error'), 'error');
