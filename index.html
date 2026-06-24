@@ -772,6 +772,9 @@
         </div>
       </div>
 
+      <!-- DEBUG — arata raspunsul brut de la GAS -->
+      <div id="gas-debug" style="display:none;margin-top:12px;padding:10px;background:#0a1628;border:1px solid #1e3a6e;border-radius:8px;font-size:11px;color:#7fa8d4;word-break:break-all;line-height:1.5;font-family:monospace;"></div>
+
       <!-- STATE: pending -->
       <div id="state-pending" style="display:none;">
         <div class="pending-icon">⏳</div>
@@ -1140,19 +1143,28 @@ async function gasCall(action, data = {}) {
       redirect: 'follow',
     });
     const text = await resp.text();
+    debugGAS(action, text);
     try { return JSON.parse(text); }
-    catch(e) { console.error('Upload response:', text.substring(0,300)); throw new Error('Upload error'); }
+    catch(e) { throw new Error('Upload error: ' + text.substring(0,200)); }
   }
 
-  // Toate celelalte actiuni: GET cu ?payload=JSON
-  // Evita complet problemele CORS/redirect ale GAS
+  // GET cu ?payload=JSON
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
   const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
   const text = await resp.text();
+  debugGAS(action, text);
   try { return JSON.parse(text); }
   catch(e) {
-    console.error('GAS response:', text.substring(0, 500));
-    throw new Error('Server error — raspuns invalid de la GAS');
+    throw new Error('GAS error: ' + text.substring(0, 300));
+  }
+}
+
+function debugGAS(action, text) {
+  console.log('[GAS] action:', action, '| response:', text.substring(0, 500));
+  const el = document.getElementById('gas-debug');
+  if (el) {
+    el.style.display = 'block';
+    el.textContent = '[' + action + '] ' + text.substring(0, 400);
   }
 }
 
