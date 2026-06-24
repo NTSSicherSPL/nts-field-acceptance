@@ -1130,13 +1130,16 @@ window.addEventListener('offline', () => {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
+  // GAS cross-origin: use text/plain to avoid CORS preflight blocking
   const resp = await fetch(CONFIG.GAS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch(e) { console.error('GAS response:', text); throw new Error('Invalid JSON from server'); }
 }
 
 // ════════════════════════════════════════════════════
