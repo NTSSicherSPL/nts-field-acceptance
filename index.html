@@ -941,7 +941,7 @@
 // ════════════════════════════════════════════════════
 const CONFIG = {
   // Google Apps Script Web App URL — hardcodat:
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbzw9ApcQinW3c-rH0uGQhWWk7p9PQGOdBSbiPmIwGJYVDyzTkjXQXr560l3Rn8lKIcs/exec',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwStBt-yYZUsJjnVnGv4Yga7cAqRbwk7_wj6ixxe8WaZprqRWV7-W70OkiY1g702RXa/exec',
   // Logo path — schimbă doar numele fișierului fără modificări de cod:
   LOGO_PATH: 'LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png',
   // IndexedDB
@@ -1130,16 +1130,30 @@ window.addEventListener('offline', () => {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
-  // GAS cross-origin: use text/plain to avoid CORS preflight blocking
-  const resp = await fetch(CONFIG.GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+  // uploadPhoto are base64 mare — trebuie POST
+  if (action === 'uploadPhoto') {
+    const resp = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+    const text = await resp.text();
+    try { return JSON.parse(text); }
+    catch(e) { console.error('Upload response:', text.substring(0,300)); throw new Error('Upload error'); }
+  }
+
+  // Toate celelalte actiuni: GET cu ?payload=JSON
+  // Evita complet problemele CORS/redirect ale GAS
+  const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
+  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
   const text = await resp.text();
   try { return JSON.parse(text); }
-  catch(e) { console.error('GAS response:', text); throw new Error('Invalid JSON from server'); }
+  catch(e) {
+    console.error('GAS response:', text.substring(0, 500));
+    throw new Error('Server error — raspuns invalid de la GAS');
+  }
 }
 
 // ════════════════════════════════════════════════════
