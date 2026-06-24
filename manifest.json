@@ -1,0 +1,26 @@
+{
+  "name": "NTS Field Acceptance",
+  "short_name": "NTS Field",
+  "description": "Professional Telecom Site Documentation & Acceptance Platform",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "lang": "en"
+}

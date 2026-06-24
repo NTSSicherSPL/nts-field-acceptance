@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a1628" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NTS Field" />
+  <title>NTS Field Acceptance</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════
+       DESIGN TOKENS — NTS Brand
+       Primary: #29AAE1 (NTS sky-blue)
+       Dark bg: #0a1628 (deep navy)
+       Surface: #0f2040
+       Card:    #152a50
+       Success: #22c55e
+       Warning: #f59e0b
+       Error:   #ef4444
+    ═══════════════════════════════════════════════ */
+    :root {
+      --brand:       #29AAE1;
+      --brand-dark:  #1a85b8;
+      --brand-light: #6dcaed;
+      --bg:          #0a1628;
+      --surface:     #0f2040;
+      --card:        #152a50;
+      --card-hover:  #1a3360;
+      --border:      #1e3a6e;
+      --text:        #e8f0fe;
+      --text-muted:  #7fa8d4;
+      --text-dim:    #4a7098;
+      --success:     #22c55e;
+      --warning:     #f59e0b;
+      --error:       #ef4444;
+      --na:          #f97316;
+      --na-bg:       rgba(249,115,22,0.10);
+      --na-border:   rgba(249,115,22,0.35);
+      --radius:      12px;
+      --radius-lg:   20px;
+      --shadow:      0 4px 24px rgba(0,0,0,0.4);
+      --shadow-lg:   0 8px 40px rgba(0,0,0,0.6);
+      --font-display: 'Rajdhani', sans-serif;
+      --font-body:    'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── PAGES ── */
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: flex; flex-direction: column; }
+
+    /* ── OFFLINE BANNER ── */
+    #offline-banner {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: var(--warning);
+      color: #000;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #offline-banner.show { display: block; }
+
+    /* ── TOAST ── */
+    #toast-container {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 9998; display: flex; flex-direction: column; gap: 8px;
+      width: calc(100% - 32px); max-width: 400px;
+    }
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--brand);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      animation: slideUp 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error   { border-left-color: var(--error); }
+    .toast.warning { border-left-color: var(--warning); }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ══════════════════════════════
+       LANDING PAGE
+    ══════════════════════════════ */
+    #page-landing {
+      background: linear-gradient(160deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    #page-landing::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 800px 600px at 70% -10%, rgba(41,170,225,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 400px 400px at -10% 80%, rgba(41,170,225,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .landing-grid-bg {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    }
+    .landing-grid-bg svg { width: 100%; height: 100%; opacity: 0.04; }
+
+    .landing-content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 32px;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    .landing-logo-wrap {
+      width: 180px; height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8px;
+    }
+    .landing-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+    .landing-app-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text);
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .landing-app-name span { color: var(--brand); }
+
+    .landing-tagline {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--brand);
+      text-align: center;
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .landing-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.65;
+      margin-bottom: 36px;
+      max-width: 360px;
+    }
+
+    .landing-cta {
+      display: flex; flex-direction: column; gap: 12px;
+      width: 100%; max-width: 320px;
+      margin-bottom: 48px;
+    }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 16px 24px;
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      letter-spacing: 0.3px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(41,170,225,0.35);
+    }
+    .btn-primary:hover { background: var(--brand-dark); box-shadow: 0 6px 28px rgba(41,170,225,0.45); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--brand);
+      border: 1.5px solid var(--brand);
+    }
+    .btn-secondary:hover { background: rgba(41,170,225,0.08); }
+    .btn-ghost {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+    .btn-danger {
+      background: var(--error);
+      color: #fff;
+    }
+    .btn-sm {
+      padding: 10px 16px;
+      font-size: 13px;
+    }
+    .btn-lg {
+      padding: 20px 28px;
+      font-size: 17px;
+      border-radius: var(--radius-lg);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .landing-features {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+    .feature-pill {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .feature-pill .fi { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .feature-pill p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .landing-footer {
+      margin-top: auto;
+      padding-top: 24px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+
+    /* ══════════════════════════════
+       AUTH PAGES (Login / Request)
+    ══════════════════════════════ */
+    .auth-page {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .auth-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .auth-header-logo { width: 60px; height: 40px; object-fit: contain; }
+    .auth-header-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text);
+    }
+    .auth-header-title span { color: var(--brand); }
+    .back-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .auth-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      max-width: 480px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      width: 100%;
+      box-shadow: var(--shadow);
+    }
+
+    .auth-card h2 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .auth-card p.subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(41,170,225,0.12);
+    }
+    .form-group input::placeholder { color: var(--text-dim); }
+
+    .form-actions { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ══════════════════════════════
+       APP LAYOUT (Post-login)
+    ══════════════════════════════ */
+    #page-app { background: var(--bg); }
+
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+    }
+    .app-header-top {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px;
+    }
+    .app-header-logo { width: 48px; height: 32px; object-fit: contain; }
+    .app-header-info { flex: 1; min-width: 0; }
+    .app-header-name {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--text);
+    }
+    .app-header-name span { color: var(--brand); }
+    .app-header-user {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .app-header-actions {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .icon-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 18px;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .icon-btn:active { background: rgba(255,255,255,0.1); }
+
+    .app-header-site {
+      padding: 8px 16px 12px;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .site-number-display {
+      flex: 1;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--brand);
+      font-family: var(--font-display);
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* Progress bar in header */
+    .overall-progress-wrap {
+      padding: 0 16px 12px;
+    }
+    .progress-label-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    .progress-label-row span {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .progress-label-row strong {
+      font-size: 14px;
+      color: var(--brand);
+      font-weight: 700;
+    }
+    .progress-bar {
+      height: 6px;
+      background: var(--card);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand-dark), var(--brand));
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .progress-bar-fill.success { background: var(--success); }
+
+    /* ── MAIN APP CONTENT ── */
+    .app-content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 100px;
+    }
+
+    /* ── SITE SETUP SCREEN ── */
+    .site-setup-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+    .site-setup-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .site-setup-card h2 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+    .site-setup-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* ── CATEGORY CARDS ── */
+    .category-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .category-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .category-icon { font-size: 22px; }
+    .category-title {
+      flex: 1;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: var(--text);
+    }
+    .category-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+    .category-badge.complete { background: rgba(34,197,94,0.15); color: var(--success); }
+    .category-badge.partial  { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .chevron { font-size: 16px; color: var(--text-dim); transition: transform 0.2s; }
+    .category-section.expanded .chevron { transform: rotate(180deg); }
+
+    .subcategory-list { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+    .sub-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .sub-card.complete { border-color: rgba(34,197,94,0.4); }
+    .sub-card.active   { border-color: var(--brand); }
+
+    .sub-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sub-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .sub-count {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .sub-count.done { color: var(--success); }
+
+    .photo-count-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .photo-count-fill {
+      height: 100%;
+      background: var(--brand);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+    .photo-count-fill.done { background: var(--success); }
+
+    .photo-thumbnails {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .photo-thumb {
+      width: 56px; height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1.5px solid var(--border);
+      position: relative;
+      background: var(--surface);
+    }
+    .thumb-wrap {
+      position: relative;
+      width: 56px; height: 56px;
+    }
+    .thumb-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+    }
+    .thumb-del {
+      position: absolute; top: -6px; right: -6px;
+      width: 20px; height: 20px;
+      background: var(--error);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .upload-status-row {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .upload-status-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-pending  { background: var(--text-dim); }
+    .status-queued   { background: var(--warning); }
+    .status-uploading{ background: var(--brand); animation: pulse 1s infinite; }
+    .status-done     { background: var(--success); }
+    .status-error    { background: var(--error); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .camera-btn-wrap { display: flex; gap: 8px; }
+    .btn-camera {
+      flex: 1;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.2s;
+    }
+    .btn-camera:active { background: var(--brand-dark); }
+    .btn-camera:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-camera.complete { background: var(--success); }
+
+    /* ── N/A BUTTON ── */
+    .btn-na {
+      flex-shrink: 0;
+      background: transparent;
+      color: var(--na);
+      border: 1.5px solid var(--na-border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+    .btn-na:active { background: var(--na-bg); }
+    .btn-na:hover  { background: var(--na-bg); }
+
+    /* ── N/A STATE — sub-card ── */
+    .sub-card.na-state {
+      border-color: var(--na-border);
+      background: rgba(249,115,22,0.04);
+    }
+    .na-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--na-bg);
+      border: 1px solid var(--na-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .na-badge {
+      font-size: 12px; font-weight: 800; letter-spacing: 1px;
+      color: var(--na);
+      background: rgba(249,115,22,0.15);
+      border: 1px solid var(--na-border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      flex-shrink: 0;
+    }
+    .na-desc {
+      font-size: 12px; color: var(--na); line-height: 1.4; font-weight: 500;
+    }
+    .na-undo-btn {
+      margin-left: auto; flex-shrink: 0;
+      background: none; border: none;
+      font-size: 11px; color: var(--text-dim);
+      cursor: pointer; text-decoration: underline;
+      padding: 2px 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── CATEGORY BADGE N/A ── */
+    .category-badge.na { background: var(--na-bg); color: var(--na); }
+
+    /* ── N/A MODAL ── */
+    .na-confirm-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    .na-confirm-title {
+      font-family: var(--font-display);
+      font-size: 20px; font-weight: 700;
+      letter-spacing: 1px; color: var(--text);
+      margin-bottom: 8px;
+    }
+    .na-confirm-context {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    }
+    .na-confirm-context .cat-label {
+      font-size: 11px; color: var(--text-dim); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;
+    }
+    .na-confirm-context .sub-label {
+      font-size: 16px; color: var(--text); font-weight: 700;
+      font-family: var(--font-display); letter-spacing: 0.5px;
+    }
+    .na-confirm-context .cat-parent {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+    .na-warning-text {
+      font-size: 13px; color: var(--text-muted); line-height: 1.55;
+      margin-bottom: 20px;
+    }
+    .na-warning-text strong { color: var(--na); }
+    .na-confirm-btns { display: flex; flex-direction: column; gap: 10px; }
+    .btn-na-confirm {
+      background: var(--na);
+      color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 15px 20px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; width: 100%;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s;
+    }
+    .btn-na-confirm:active { background: #ea6d0e; }
+
+    /* ── STATUS INDICATOR DOT for N/A ── */
+    .status-na { background: var(--na); }
+
+    /* ── SUBMIT SECTION ── */
+    .submit-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-align: center;
+    }
+    .submit-section h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .submit-section p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* ── UPLOAD QUEUE INDICATOR ── */
+    .upload-queue-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: none;
+    }
+    .upload-queue-bar.show { display: block; }
+    .uq-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .uq-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+    .uq-count { font-size: 12px; font-weight: 700; color: var(--brand); }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.8);
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: slideUpModal 0.3s ease;
+    }
+    @keyframes slideUpModal {
+      from { transform: translateY(30px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    .modal h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text-muted);
+      cursor: pointer;
+      margin-top: -4px;
+    }
+
+    /* Full-screen image viewer */
+    #img-viewer {
+      display: none;
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.97);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #img-viewer.show { display: flex; }
+    #img-viewer img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+    #img-viewer-close {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 24px;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Hidden file input */
+    #camera-input { display: none; }
+
+    /* Loading spinner */
+    .spinner-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 5000;
+      background: rgba(10,22,40,0.85);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner-overlay.show { display: flex; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+
+    /* Success page */
+    .success-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .success-icon { font-size: 72px; margin-bottom: 16px; }
+    .success-screen h2 {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .success-screen p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 320px;
+      margin-bottom: 32px;
+    }
+    .success-meta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: left;
+      margin-bottom: 32px;
+    }
+    .success-meta-row {
+      display: flex; justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .success-meta-row:last-child { border-bottom: none; }
+    .success-meta-row .label { color: var(--text-muted); }
+    .success-meta-row .val { color: var(--text); font-weight: 600; }
+
+    /* ── RESPONSIVE ── */
+    @media (min-width: 600px) {
+      .landing-features { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    }
+    @media (min-width: 768px) {
+      .landing-content { padding-top: 64px; }
+      .landing-logo-wrap { width: 220px; height: 140px; }
+      .landing-app-name { font-size: 34px; }
+      .auth-card { padding: 40px 36px; }
+    }
+
+    /* Utility */
+    .text-center { text-align: center; }
+    .mt-4 { margin-top: 16px; }
+    .mt-8 { margin-top: 32px; }
+    .divider {
+      height: 1px; background: var(--border);
+      margin: 20px 0;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(41,170,225,0.1);
+      border: 1px solid rgba(41,170,225,0.2);
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- OFFLINE BANNER -->
+<div id="offline-banner">⚠️ Offline — Upload paused. Photos saved locally.</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- SPINNER -->
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner"></div>
+  <div class="spinner-label" id="spinner-label">Loading...</div>
+</div>
+
+<!-- IMAGE VIEWER -->
+<div id="img-viewer">
+  <button id="img-viewer-close" onclick="closeImgViewer()">✕</button>
+  <img id="img-viewer-src" src="" alt="Preview" />
+</div>
+
+<!-- Hidden camera input -->
+<input type="file" id="camera-input" accept="image/*" capture="environment" multiple />
+
+<!-- ════════════════════════════════════════
+     PAGE: LANDING
+════════════════════════════════════════ -->
+<div id="page-landing" class="page active">
+  <div class="landing-grid-bg">
+    <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" />
+    </svg>
+  </div>
+  <div class="landing-content">
+    <div class="landing-logo-wrap">
+      <img id="landing-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS Logo" onerror="this.style.display='none'" />
+    </div>
+    <div class="landing-app-name">NTS <span>Field</span> Acceptance</div>
+    <div class="landing-tagline">Professional Telecom Site Documentation &amp; Acceptance Platform</div>
+    <div class="landing-desc">
+      Capture, validate and submit field acceptance photos directly from site. All documentation is securely stored and synchronized for project delivery and quality assurance.
+    </div>
+    <div class="landing-cta">
+      <button class="btn btn-primary btn-lg" onclick="showPage('page-login')">🔐 Login</button>
+      <button class="btn btn-secondary btn-lg" onclick="showPage('page-request')">📋 Request Access</button>
+    </div>
+    <div class="landing-features">
+      <div class="feature-pill"><span class="fi">📱</span><p>Mobile-first field workflow</p></div>
+      <div class="feature-pill"><span class="fi">✅</span><p>Mandatory photo validation</p></div>
+      <div class="feature-pill"><span class="fi">🔌</span><p>Offline operation &amp; auto-sync</p></div>
+      <div class="feature-pill"><span class="fi">☁️</span><p>Google Drive cloud storage</p></div>
+      <div class="feature-pill"><span class="fi">🖥️</span><p>Synology NAS sync</p></div>
+      <div class="feature-pill"><span class="fi">📊</span><p>Real-time upload progress</p></div>
+      <div class="feature-pill"><span class="fi">🗂️</span><p>Dynamic category management</p></div>
+      <div class="feature-pill"><span class="fi">🔒</span><p>Secure user approval</p></div>
+    </div>
+    <div class="landing-footer">Powered by Network Ticket Solution</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: LOGIN
+════════════════════════════════════════ -->
+<div id="page-login" class="page auth-page">
+  <div class="auth-header">
+    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+    <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
+    <button class="back-btn" onclick="showPage('page-landing')">✕</button>
+  </div>
+  <div class="auth-body">
+    <div class="auth-card">
+      <h2>Welcome back</h2>
+      <p class="subtitle">Enter your approved email to access the platform.</p>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="handleLogin()">Login →</button>
+        <button class="btn btn-ghost" onclick="showPage('page-request')">Don't have access? Request it</button>
+      </div>
+    </div>
+  </div>
+  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: ACCESS REQUEST
+════════════════════════════════════════ -->
+<div id="page-request" class="page auth-page">
+  <div class="auth-header">
+    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+    <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
+    <button class="back-btn" onclick="showPage('page-landing')">✕</button>
+  </div>
+  <div class="auth-body">
+    <div class="auth-card">
+      <h2>Request Access</h2>
+      <p class="subtitle">Submit your details. An administrator will review and approve your account.</p>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="req-name" placeholder="First Last" autocomplete="name" />
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="req-email" placeholder="your@email.com" autocomplete="email" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="handleRequest()">Submit Request →</button>
+        <button class="btn btn-ghost" onclick="showPage('page-login')">Already have access? Login</button>
+      </div>
+    </div>
+  </div>
+  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: MAIN APP
+════════════════════════════════════════ -->
+<div id="page-app" class="page">
+
+  <!-- App Header -->
+  <div class="app-header" id="app-header">
+    <div class="app-header-top">
+      <img class="app-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+      <div class="app-header-info">
+        <div class="app-header-name">NTS <span>Field</span> Acceptance</div>
+        <div class="app-header-user" id="header-user-info">Logged in as: —</div>
+      </div>
+      <div class="app-header-actions">
+        <div class="icon-btn" onclick="showSiteModal()" title="Change site">🏗️</div>
+        <div class="icon-btn" onclick="handleLogout()" title="Logout">🚪</div>
+      </div>
+    </div>
+    <div class="app-header-site" id="site-display-row" style="display:none;">
+      <div class="site-number-display" onclick="showSiteModal()">
+        <span>📍 <span id="header-site-number">—</span></span>
+        <span style="font-size:12px;color:var(--text-dim);">Change ›</span>
+      </div>
+    </div>
+    <div class="overall-progress-wrap" id="overall-progress-wrap" style="display:none;">
+      <div class="progress-label-row">
+        <span>Overall Progress</span>
+        <strong id="overall-pct">0%</strong>
+      </div>
+      <div class="progress-bar"><div class="progress-bar-fill" id="overall-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- SITE SETUP (shown when no site selected) -->
+  <div class="site-setup-screen" id="site-setup-screen">
+    <div class="site-setup-card">
+      <h2>🏗️ Site Setup</h2>
+      <p>Enter the site number to begin. This will be used as the project folder name in Google Drive.</p>
+      <div class="form-group">
+        <label>Site Number</label>
+        <input type="text" id="site-number-input" placeholder="e.g. 12345" autocomplete="off"
+          onkeydown="if(event.key==='Enter')confirmSite()" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="confirmSite()">Start Documentation →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT (categories) -->
+  <div class="app-content" id="app-content" style="display:none;">
+    <div id="categories-list"></div>
+
+    <div class="submit-section" id="submit-section" style="display:none;">
+      <h3>✅ Documentation Complete</h3>
+      <p>All categories and subcategories are complete — either by photos or marked N/A. You can now submit the project.</p>
+      <div id="submit-summary" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;"></div>
+      <button class="btn btn-success btn-lg" onclick="handleSubmit()">📤 Submit Project</button>
+    </div>
+  </div>
+
+  <!-- Upload queue bar -->
+  <div class="upload-queue-bar" id="upload-queue-bar">
+    <div class="uq-top">
+      <span class="uq-label" id="uq-label">Uploading photos…</span>
+      <span class="uq-count" id="uq-count">0 remaining</span>
+    </div>
+    <div class="progress-bar"><div class="progress-bar-fill" id="uq-fill" style="width:0%"></div></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: SUCCESS
+════════════════════════════════════════ -->
+<div id="page-success" class="page auth-page">
+  <div class="auth-header">
+    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+    <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
+  </div>
+  <div class="success-screen">
+    <div class="success-icon">🎉</div>
+    <h2>Project Submitted!</h2>
+    <p>All photos have been uploaded and the project has been recorded successfully.</p>
+    <div class="success-meta" id="success-meta"></div>
+    <button class="btn btn-primary" onclick="startNewProject()">Start New Project</button>
+  </div>
+  <div class="landing-footer" style="padding:16px;text-align:center;">Powered by Network Ticket Solution</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MODALS
+════════════════════════════════════════ -->
+<!-- N/A Confirmation Modal -->
+<div class="modal-overlay" id="modal-na">
+  <div class="modal">
+    <div class="na-confirm-icon">⚠️</div>
+    <div class="na-confirm-title">Mark as Not Applicable?</div>
+    <div class="na-confirm-context">
+      <div class="cat-label">Category / Subcategory</div>
+      <div class="sub-label" id="na-modal-sub">—</div>
+      <div class="cat-parent" id="na-modal-cat">—</div>
+    </div>
+    <p class="na-warning-text">
+      Marking this as <strong>N/A (Not Applicable)</strong> means this item is
+      <strong>not present on site</strong> and no photos are required.<br><br>
+      This decision will be recorded in the project audit trail with your name,
+      date and time.
+    </p>
+    <div class="na-confirm-btns">
+      <button class="btn-na-confirm" onclick="confirmNA()">✕ Confirm — Not Present on Site</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-na')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Site change modal -->
+<div class="modal-overlay" id="modal-site">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-site')">✕</button>
+    <h3>Change Site Number</h3>
+    <div class="form-group">
+      <label>Site Number</label>
+      <input type="text" id="modal-site-input" placeholder="e.g. 12345" />
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="changeSiteNumber()">Confirm</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-site')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  CONFIGURATION — Update this URL after deploying
+//  Google Apps Script
+// ════════════════════════════════════════════════════
+const CONFIG = {
+  // Google Apps Script Web App URL — hardcodat:
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbzw9ApcQinW3c-rH0uGQhWWk7p9PQGOdBSbiPmIwGJYVDyzTkjXQXr560l3Rn8lKIcs/exec',
+  // Logo path — schimbă doar numele fișierului fără modificări de cod:
+  LOGO_PATH: 'LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png',
+  // IndexedDB
+  IDB_NAME: 'NTSFieldDB',
+  IDB_VERSION: 1,
+  PHOTO_STORE: 'pending_photos',
+  STATE_STORE: 'app_state',
+};
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+let APP = {
+  user: null,       // { name, email }
+  siteNumber: null, // e.g. "12345"
+  categories: [],   // loaded from GAS
+  photos: {},       // key: "cat|sub" → [{id, file, blob, name, status, driveId}]
+  naStatus: {},     // key: "cat|||sub" → { markedAt, markedBy } | null
+  isOnline: navigator.onLine,
+  uploadQueue: [],
+  isUploading: false,
+  db: null,
+};
+
+// ════════════════════════════════════════════════════
+//  INDEXEDDB
+// ════════════════════════════════════════════════════
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CONFIG.IDB_NAME, CONFIG.IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(CONFIG.PHOTO_STORE)) {
+        db.createObjectStore(CONFIG.PHOTO_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(CONFIG.STATE_STORE)) {
+        db.createObjectStore(CONFIG.STATE_STORE, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = e => { APP.db = e.target.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbPut(store, obj) {
+  return new Promise((resolve, reject) => {
+    const tx = APP.db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(obj).onsuccess = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx = APP.db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx = APP.db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx = APP.db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function saveState() {
+  if (!APP.db) return;
+  await dbPut(CONFIG.STATE_STORE, {
+    key: 'session',
+    user: APP.user,
+    siteNumber: APP.siteNumber,
+    naStatus: APP.naStatus,
+    // Save photo metadata (not blobs — those stay in PHOTO_STORE)
+    photosMeta: Object.fromEntries(
+      Object.entries(APP.photos).map(([k, arr]) => [k, arr.map(p => ({
+        id: p.id, name: p.name, status: p.status, driveId: p.driveId || null
+      }))])
+    ),
+  });
+}
+
+async function loadState() {
+  if (!APP.db) return;
+  const s = await dbGet(CONFIG.STATE_STORE, 'session');
+  if (!s) return;
+  APP.user = s.user;
+  APP.siteNumber = s.siteNumber;
+  APP.naStatus = s.naStatus || {};
+  // Restore photo metadata + reload blobs
+  const allPending = await dbGetAll(CONFIG.PHOTO_STORE);
+  const blobMap = {};
+  allPending.forEach(p => { blobMap[p.id] = p; });
+  APP.photos = {};
+  if (s.photosMeta) {
+    for (const [k, arr] of Object.entries(s.photosMeta)) {
+      APP.photos[k] = arr.map(m => ({
+        ...m,
+        blob: blobMap[m.id]?.blob || null,
+        thumbUrl: blobMap[m.id]?.thumbUrl || null,
+      }));
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function showSpinner(label = 'Loading…') {
+  document.getElementById('spinner-label').textContent = label;
+  document.getElementById('spinner').classList.add('show');
+}
+function hideSpinner() {
+  document.getElementById('spinner').classList.remove('show');
+}
+
+function toast(msg, type = 'info', dur = 3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  const c = document.getElementById('toast-container');
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, dur);
+}
+
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function closeImgViewer() { document.getElementById('img-viewer').classList.remove('show'); }
+function openImgViewer(src) {
+  document.getElementById('img-viewer-src').src = src;
+  document.getElementById('img-viewer').classList.add('show');
+}
+
+function slugify(str) {
+  return str.replace(/[^a-zA-Z0-9]/g, '').replace(/\s+/g, '');
+}
+
+function photoKey(cat, sub) { return `${cat}|||${sub}`; }
+
+function formatSiteName(siteNumber) { return `Site_${siteNumber}`; }
+function formatPhotoName(siteNumber, cat, sub, idx) {
+  const s = slugify(siteNumber);
+  const c = slugify(cat);
+  const sb = slugify(sub);
+  const n = String(idx).padStart(3, '0');
+  return `${s}_${c}_${sb}_${n}.jpg`;
+}
+
+// ════════════════════════════════════════════════════
+//  ONLINE / OFFLINE
+// ════════════════════════════════════════════════════
+window.addEventListener('online', () => {
+  APP.isOnline = true;
+  document.getElementById('offline-banner').classList.remove('show');
+  toast('Connection restored — Upload resumed', 'success');
+  processUploadQueue();
+});
+window.addEventListener('offline', () => {
+  APP.isOnline = false;
+  document.getElementById('offline-banner').classList.add('show');
+  toast('Offline — Upload paused. Photos saved locally.', 'warning', 5000);
+});
+
+// ════════════════════════════════════════════════════
+//  GAS API CALLS
+// ════════════════════════════════════════════════════
+async function gasCall(action, data = {}) {
+  const payload = { action, ...data };
+  const resp = await fetch(CONFIG.GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// ════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) { toast('Please enter your email.', 'error'); return; }
+
+  showSpinner('Verifying access…');
+  try {
+    const res = await gasCall('login', { email });
+    if (res.status === 'approved') {
+      APP.user = { name: res.name, email };
+      await saveState();
+      toast(`Welcome back, ${res.name}!`, 'success');
+      initApp();
+    } else if (res.status === 'pending') {
+      toast('Your account is pending approval. Please wait.', 'warning');
+    } else {
+      toast('Access denied. Email not found or rejected.', 'error');
+    }
+  } catch(e) {
+    toast('Unable to reach server. Check connection.', 'error');
+  } finally { hideSpinner(); }
+}
+
+async function handleRequest() {
+  const name  = document.getElementById('req-name').value.trim();
+  const email = document.getElementById('req-email').value.trim().toLowerCase();
+  if (!name || !email) { toast('Please fill all fields.', 'error'); return; }
+  if (!email.includes('@')) { toast('Invalid email address.', 'error'); return; }
+
+  showSpinner('Submitting request…');
+  try {
+    const res = await gasCall('requestAccess', { name, email });
+    if (res.success) {
+      toast('Request submitted! An admin will review it shortly.', 'success', 5000);
+      document.getElementById('req-name').value = '';
+      document.getElementById('req-email').value = '';
+      showPage('page-login');
+    } else {
+      toast(res.message || 'Error submitting request.', 'error');
+    }
+  } catch(e) {
+    toast('Unable to reach server. Check connection.', 'error');
+  } finally { hideSpinner(); }
+}
+
+function handleLogout() {
+  if (!confirm('Log out? Unsaved sessions will be restored on next login from this device.')) return;
+  APP.user = null;
+  APP.siteNumber = null;
+  APP.photos = {};
+  APP.naStatus = {};
+  saveState();
+  showPage('page-landing');
+}
+
+// ════════════════════════════════════════════════════
+//  APP INIT
+// ════════════════════════════════════════════════════
+async function initApp() {
+  showPage('page-app');
+  if (APP.user) {
+    document.getElementById('header-user-info').textContent = `Logged in as: ${APP.user.name}`;
+  }
+  if (APP.siteNumber) {
+    showMainContent();
+    await loadCategories();
+    renderCategories();
+    updateOverallProgress();
+    processUploadQueue(); // resume any pending
+  } else {
+    document.getElementById('site-setup-screen').style.display = 'flex';
+    document.getElementById('app-content').style.display = 'none';
+    document.getElementById('site-display-row').style.display = 'none';
+    document.getElementById('overall-progress-wrap').style.display = 'none';
+  }
+}
+
+async function confirmSite() {
+  const val = document.getElementById('site-number-input').value.trim();
+  if (!val) { toast('Please enter a site number.', 'error'); return; }
+  APP.siteNumber = val;
+  await saveState();
+  showMainContent();
+  await loadCategories();
+  renderCategories();
+  updateOverallProgress();
+  processUploadQueue();
+}
+
+function showMainContent() {
+  document.getElementById('site-setup-screen').style.display = 'none';
+  document.getElementById('app-content').style.display = 'flex';
+  document.getElementById('site-display-row').style.display = 'flex';
+  document.getElementById('overall-progress-wrap').style.display = 'block';
+  document.getElementById('header-site-number').textContent = `Site_${APP.siteNumber}`;
+}
+
+function showSiteModal() {
+  document.getElementById('modal-site-input').value = APP.siteNumber || '';
+  showModal('modal-site');
+}
+
+async function changeSiteNumber() {
+  const val = document.getElementById('modal-site-input').value.trim();
+  if (!val) { toast('Enter a site number.', 'error'); return; }
+  APP.siteNumber = val;
+  document.getElementById('header-site-number').textContent = `Site_${val}`;
+  await saveState();
+  closeModal('modal-site');
+  toast(`Site changed to Site_${val}`, 'success');
+  renderCategories();
+  updateOverallProgress();
+}
+
+// ════════════════════════════════════════════════════
+//  CATEGORIES
+// ════════════════════════════════════════════════════
+async function loadCategories() {
+  showSpinner('Loading categories…');
+  try {
+    const res = await gasCall('getCategories');
+    if (res.categories) {
+      APP.categories = res.categories; // [{category, subcategory, required, active}]
+    }
+  } catch(e) {
+    toast('Could not load categories. Using cached.', 'warning');
+    // Try to use whatever is in memory
+  } finally { hideSpinner(); }
+}
+
+function getCategoryGroups() {
+  const groups = {};
+  APP.categories.filter(r => r.active !== false && r.active !== 'FALSE').forEach(r => {
+    if (!groups[r.category]) groups[r.category] = [];
+    groups[r.category].push(r);
+  });
+  return groups;
+}
+
+function renderCategories() {
+  const groups = getCategoryGroups();
+  const container = document.getElementById('categories-list');
+  container.innerHTML = '';
+
+  let catIndex = 0;
+  for (const [cat, subs] of Object.entries(groups)) {
+    const catEl = buildCategoryEl(cat, subs, catIndex === 0);
+    container.appendChild(catEl);
+    catIndex++;
+  }
+  updateSubmitButton();
+}
+
+function buildCategoryEl(cat, subs, expanded) {
+  const total = subs.length;
+  const done  = subs.filter(s => isSubComplete(cat, s)).length;
+  const naDone = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+
+  const section = document.createElement('div');
+  section.className = 'category-section' + (expanded ? ' expanded' : '');
+  section.dataset.cat = cat;
+
+  let badgeClass = '', badgeText = `${done}/${total}`;
+  if (done === total)      badgeClass = 'complete';
+  else if (naDone > 0)    badgeClass = 'na';
+  else if (done > 0)      badgeClass = 'partial';
+
+  section.innerHTML = `
+    <div class="category-header" onclick="toggleCategory(this)">
+      <span class="category-icon">${getCatIcon(cat)}</span>
+      <span class="category-title">${cat}</span>
+      <span class="category-badge ${badgeClass}">${badgeText} subcategories</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="subcategory-list" id="sublist-${slugify(cat)}" style="${expanded ? '' : 'display:none'}"></div>
+  `;
+
+  const subList = section.querySelector('.subcategory-list');
+  subs.forEach(s => { subList.appendChild(buildSubCard(cat, s)); });
+
+  return section;
+}
+
+function getCatIcon(cat) {
+  const map = {
+    'Overview Location': '📍', 'Equipment': '⚙️', 'Final Status': '✅',
+    'Power': '⚡', 'Antenna': '📡', 'Cabling': '🔌', 'Grounding': '🔗',
+    'Documentation': '📋', 'Safety': '🦺',
+  };
+  for (const [k, v] of Object.entries(map)) {
+    if (cat.toLowerCase().includes(k.toLowerCase())) return v;
+  }
+  return '🗂️';
+}
+
+function toggleCategory(header) {
+  const section = header.closest('.category-section');
+  const list    = section.querySelector('.subcategory-list');
+  const isOpen  = section.classList.contains('expanded');
+  section.classList.toggle('expanded', !isOpen);
+  list.style.display = isOpen ? 'none' : 'flex';
+}
+
+function isSubComplete(cat, sub) {
+  const key = photoKey(cat, sub.subcategory);
+  if (APP.naStatus[key]) return true; // N/A counts as complete
+  const uploaded = (APP.photos[key] || []).filter(p => p.status === 'done').length;
+  return uploaded >= Number(sub.required);
+}
+
+function buildSubCard(cat, sub) {
+  const key      = photoKey(cat, sub.subcategory);
+  const isNA     = !!APP.naStatus[key];
+  const photos   = APP.photos[key] || [];
+  const required = Number(sub.required);
+  const uploaded = photos.filter(p => p.status === 'done').length;
+  const total    = photos.length;
+  const complete = isNA || uploaded >= required;
+  const pct      = isNA ? 100 : Math.min(100, required > 0 ? Math.round((uploaded / required) * 100) : 0);
+
+  const card = document.createElement('div');
+  card.className = 'sub-card' + (complete && !isNA ? ' complete' : '') + (isNA ? ' na-state' : '');
+  card.dataset.key = key;
+
+  // Escape for inline JS string args
+  const catEsc = cat.replace(/'/g, "\\'");
+  const subEsc = sub.subcategory.replace(/'/g, "\\'");
+
+  // Status indicator
+  let statusDotCls = 'status-pending', statusTxt = 'No photos yet';
+  if (isNA) {
+    statusDotCls = 'status-na'; statusTxt = 'Marked as Not Applicable';
+  } else {
+    const st = getUploadStatusText(photos);
+    statusDotCls = st.cls; statusTxt = st.text;
+  }
+
+  // Header badge
+  let countHtml;
+  if (isNA) {
+    countHtml = `<span class="sub-count" style="color:var(--na);font-weight:800;letter-spacing:0.5px;">N/A</span>`;
+  } else {
+    countHtml = `<span class="sub-count ${complete ? 'done' : ''}">${uploaded}/${required} photos</span>`;
+  }
+
+  // Thumbnails
+  const thumbsHtml = photos.map((p, i) => {
+    const thumbSrc = p.thumbUrl || '';
+    return `
+      <div class="thumb-wrap">
+        ${thumbSrc
+          ? `<img src="${thumbSrc}" alt="Photo ${i+1}" onclick="openImgViewer('${thumbSrc}')" />`
+          : `<div style="width:56px;height:56px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;">📷</div>`}
+        ${p.status !== 'done' ? `<button class="thumb-del" onclick="removePhoto('${key}',${i})">✕</button>` : ''}
+      </div>`;
+  }).join('');
+
+  // N/A banner
+  const naBannerHtml = isNA ? `
+    <div class="na-banner">
+      <span class="na-badge">N/A</span>
+      <div>
+        <div class="na-desc">Not present on site</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
+          Recorded by ${APP.naStatus[key]?.markedBy || APP.user?.name || '—'} · ${APP.naStatus[key]?.markedAt ? new Date(APP.naStatus[key].markedAt).toLocaleString() : ''}
+        </div>
+      </div>
+      <button class="na-undo-btn" onclick="undoNA('${key}','${catEsc}','${subEsc}')">Undo</button>
+    </div>` : '';
+
+  // Progress bar
+  const barColor = isNA ? 'var(--na)' : (complete ? 'var(--success)' : 'var(--brand)');
+
+  // Action buttons row
+  const cameraLabel = isNA ? '📷 Add Photo (Override N/A)' : (complete ? '✅ Complete — Add more' : '📷 Open Camera');
+  const cameraBtnCls = `btn-camera${complete && !isNA ? ' complete' : ''}${isNA ? ' style="background:var(--card);color:var(--text-muted);border:1.5px solid var(--border);"' : ''}`;
+
+  // N/A button — show always (even when complete, to allow re-marking)
+  const naBtnHtml = !isNA ? `
+    <button class="btn-na" onclick="promptNA('${key}','${catEsc}','${subEsc}')">
+      ✕ N/A
+    </button>` : '';
+
+  card.innerHTML = `
+    <div class="sub-card-header">
+      <span class="sub-name">${sub.subcategory}</span>
+      ${countHtml}
+    </div>
+    <div class="photo-count-bar">
+      <div class="photo-count-fill" style="width:${pct}%;background:${barColor}"></div>
+    </div>
+    ${naBannerHtml}
+    ${!isNA && photos.length > 0 ? `
+      <div class="upload-status-row">
+        <div class="upload-status-dot ${statusDotCls}"></div>
+        <span>${statusTxt}</span>
+      </div>
+      <div class="photo-thumbnails">${thumbsHtml}</div>
+    ` : ''}
+    <div class="camera-btn-wrap">
+      <button class="${cameraBtnCls}"
+        onclick="openCamera('${key}','${catEsc}','${subEsc}',${required})">
+        ${cameraLabel}
+      </button>
+      ${naBtnHtml}
+    </div>
+    ${!isNA ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+      Required: ${required} · Captured: ${total} · Uploaded: ${uploaded}
+    </div>` : ''}
+  `;
+  return card;
+}
+
+function getUploadStatusText(photos) {
+  if (!photos.length) return { cls: 'status-pending', text: 'No photos yet' };
+  const statuses = photos.map(p => p.status);
+  if (statuses.some(s => s === 'uploading')) return { cls: 'status-uploading', text: 'Uploading…' };
+  if (statuses.some(s => s === 'queued'))    return { cls: 'status-queued',    text: 'Queued for upload' };
+  if (statuses.every(s => s === 'done'))     return { cls: 'status-done',      text: 'All uploaded to Drive' };
+  if (statuses.some(s => s === 'error'))     return { cls: 'status-error',     text: 'Upload error — will retry' };
+  return { cls: 'status-pending', text: 'Saved locally' };
+}
+
+// ════════════════════════════════════════════════════
+//  CAMERA & PHOTO CAPTURE
+// ════════════════════════════════════════════════════
+let _currentCapture = null;
+
+document.getElementById('camera-input').addEventListener('change', async function(e) {
+  if (!_currentCapture) return;
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  const { key, cat, sub } = _currentCapture;
+  if (!APP.photos[key]) APP.photos[key] = [];
+
+  for (const file of files) {
+    await processAndQueuePhoto(file, key, cat, sub);
+  }
+
+  refreshSubCard(key);
+  updateCategoryBadge(cat);
+  updateOverallProgress();
+  await saveState();
+  processUploadQueue();
+});
+
+async function processAndQueuePhoto(file, key, cat, sub) {
+  // Compress / resize if needed while keeping quality high
+  const compressed = await compressImage(file, 3000, 0.92);
+  const idx = (APP.photos[key] || []).length + 1;
+  const name = formatPhotoName(APP.siteNumber, cat, sub, idx);
+  const thumbUrl = await blobToDataURL(compressed);
+
+  const id = `${key}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const photoObj = { id, name, blob: compressed, thumbUrl, status: 'queued', driveId: null };
+
+  APP.photos[key].push(photoObj);
+
+  // Persist blob in IndexedDB
+  await dbPut(CONFIG.PHOTO_STORE, { id, blob: compressed, thumbUrl });
+
+  APP.uploadQueue.push({ key, cat, sub, photoId: id });
+}
+
+function blobToDataURL(blob) {
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function compressImage(file, maxPx, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round((height / width) * maxPx); width = maxPx; }
+        else                { width  = Math.round((width / height) * maxPx); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', quality);
+    };
+    img.onerror = () => resolve(file);
+    img.src = url;
+  });
+}
+
+async function removePhoto(key, idx) {
+  const photos = APP.photos[key] || [];
+  const p = photos[idx];
+  if (!p) return;
+  if (p.status === 'done') {
+    toast('Cannot remove an already-uploaded photo.', 'warning'); return;
+  }
+  await dbDelete(CONFIG.PHOTO_STORE, p.id);
+  photos.splice(idx, 1);
+  // Rename remaining
+  photos.forEach((ph, i) => {
+    const [cat, sub] = key.split('|||');
+    ph.name = formatPhotoName(APP.siteNumber, cat, sub, i + 1);
+  });
+  APP.photos[key] = photos;
+  refreshSubCard(key);
+  updateOverallProgress();
+  await saveState();
+}
+
+// ════════════════════════════════════════════════════
+//  N/A WORKFLOW
+// ════════════════════════════════════════════════════
+let _pendingNA = null; // { key, cat, sub }
+
+function promptNA(key, cat, sub) {
+  _pendingNA = { key, cat, sub };
+  document.getElementById('na-modal-sub').textContent = sub;
+  document.getElementById('na-modal-cat').textContent = cat;
+  showModal('modal-na');
+}
+
+async function confirmNA() {
+  if (!_pendingNA) return;
+  const { key, cat, sub } = _pendingNA;
+  _pendingNA = null;
+  closeModal('modal-na');
+
+  const now = new Date().toISOString();
+  APP.naStatus[key] = {
+    markedAt:  now,
+    markedBy:  APP.user?.name || '',
+    markedEmail: APP.user?.email || '',
+    category:  cat,
+    subcategory: sub,
+    siteNumber: APP.siteNumber,
+  };
+
+  refreshSubCard(key);
+  updateCategoryBadge(cat);
+  updateOverallProgress();
+  updateSubmitButton();
+  await saveState();
+
+  toast(`Marked N/A: ${sub}`, 'warning', 3000);
+
+  // Fire-and-forget audit log to GAS (non-blocking)
+  if (APP.isOnline) {
+    gasCall('logNA', {
+      siteNumber:  APP.siteNumber,
+      category:    cat,
+      subcategory: sub,
+      userName:    APP.user?.name  || '',
+      userEmail:   APP.user?.email || '',
+      markedAt:    now,
+      status:      'N/A',
+    }).catch(() => {
+      // Will be re-sent on submit if offline — non-critical here
+    });
+  }
+}
+
+async function undoNA(key, cat, sub) {
+  delete APP.naStatus[key];
+  refreshSubCard(key);
+  updateCategoryBadge(cat);
+  updateOverallProgress();
+  updateSubmitButton();
+  await saveState();
+  toast(`N/A removed: ${sub}`, 'info', 2500);
+}
+
+// When camera is opened on an N/A subcategory, clear the N/A flag first
+function openCamera(key, cat, sub, required) {
+  if (APP.naStatus[key]) {
+    // Override: clear N/A and proceed to camera
+    delete APP.naStatus[key];
+    refreshSubCard(key);
+    updateCategoryBadge(cat);
+    updateOverallProgress();
+  }
+  _currentCapture = { key, cat, sub, required };
+  const input = document.getElementById('camera-input');
+  input.value = '';
+  input.click();
+}
+
+// ════════════════════════════════════════════════════
+//  UPLOAD QUEUE
+// ════════════════════════════════════════════════════
+async function processUploadQueue() {
+  if (APP.isUploading || !APP.isOnline) return;
+  APP.isUploading = true;
+  updateQueueBar();
+
+  while (APP.uploadQueue.length > 0 && APP.isOnline) {
+    const item = APP.uploadQueue[0];
+    const photos = APP.photos[item.key] || [];
+    const photo  = photos.find(p => p.id === item.photoId);
+    if (!photo || photo.status === 'done') {
+      APP.uploadQueue.shift();
+      continue;
+    }
+
+    photo.status = 'uploading';
+    refreshSubCard(item.key);
+    updateQueueBar();
+
+    try {
+      const b64 = await blobToBase64(photo.blob);
+      const res = await gasCall('uploadPhoto', {
+        siteNumber:  APP.siteNumber,
+        category:    item.cat,
+        subcategory: item.sub,
+        fileName:    photo.name,
+        base64Data:  b64,
+        mimeType:    'image/jpeg',
+        userName:    APP.user?.name || '',
+        userEmail:   APP.user?.email || '',
+      });
+
+      if (res.success) {
+        photo.status  = 'done';
+        photo.driveId = res.fileId || '';
+        photo.blob    = null; // free memory
+        await dbDelete(CONFIG.PHOTO_STORE, photo.id);
+        APP.uploadQueue.shift();
+        toast(`Uploaded: ${photo.name}`, 'success', 2000);
+      } else {
+        photo.status = 'error';
+        APP.uploadQueue.shift();
+        APP.uploadQueue.push(item); // re-queue at end
+        toast(`Upload failed: ${photo.name}. Retrying…`, 'warning');
+        await sleep(3000);
+      }
+    } catch(e) {
+      photo.status = 'error';
+      APP.isOnline = false;
+      document.getElementById('offline-banner').classList.add('show');
+      break;
+    }
+
+    refreshSubCard(item.key);
+    updateCategoryBadge(item.cat);
+    updateOverallProgress();
+    await saveState();
+    updateQueueBar();
+  }
+
+  APP.isUploading = false;
+  updateQueueBar();
+  updateSubmitButton();
+}
+
+function blobToBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result.split(',')[1]);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function updateQueueBar() {
+  const bar   = document.getElementById('upload-queue-bar');
+  const label = document.getElementById('uq-label');
+  const count = document.getElementById('uq-count');
+  const fill  = document.getElementById('uq-fill');
+  const total = APP.uploadQueue.length;
+
+  if (total === 0) {
+    bar.classList.remove('show');
+    return;
+  }
+  bar.classList.add('show');
+  label.textContent = APP.isOnline ? 'Uploading photos…' : 'Offline — Upload paused';
+  count.textContent = `${total} remaining`;
+  // Rough progress
+  const allPhotos = Object.values(APP.photos).flat();
+  const doneCount = allPhotos.filter(p => p.status === 'done').length;
+  const allCount  = allPhotos.length;
+  fill.style.width = allCount ? `${Math.round((doneCount/allCount)*100)}%` : '0%';
+}
+
+// ════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ════════════════════════════════════════════════════
+function refreshSubCard(key) {
+  const el = document.querySelector(`.sub-card[data-key="${CSS.escape(key)}"]`);
+  if (!el) return;
+  const [cat, sub] = key.split('|||');
+  const groups = getCategoryGroups();
+  const catSubs = groups[cat] || [];
+  const subDef  = catSubs.find(s => s.subcategory === sub);
+  if (!subDef) return;
+  const newCard = buildSubCard(cat, subDef);
+  el.replaceWith(newCard);
+}
+
+function updateCategoryBadge(cat) {
+  const section = document.querySelector(`.category-section[data-cat="${CSS.escape(cat)}"]`);
+  if (!section) return;
+  const groups  = getCategoryGroups();
+  const subs    = groups[cat] || [];
+  const total   = subs.length;
+  const done    = subs.filter(s => isSubComplete(cat, s)).length;
+  const naDone  = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+  const badge   = section.querySelector('.category-badge');
+  badge.textContent = `${done}/${total} subcategories`;
+  let cls = '';
+  if (done === total)   cls = 'complete';
+  else if (naDone > 0) cls = 'na';
+  else if (done > 0)   cls = 'partial';
+  badge.className = `category-badge ${cls}`;
+}
+
+function updateOverallProgress() {
+  const groups  = getCategoryGroups();
+  let total = 0, done = 0;
+  for (const [cat, subs] of Object.entries(groups)) {
+    subs.forEach(s => {
+      total++;
+      if (isSubComplete(cat, s)) done++;
+    });
+  }
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('overall-pct').textContent  = `${pct}%`;
+  const fill = document.getElementById('overall-fill');
+  fill.style.width = `${pct}%`;
+  fill.className = 'progress-bar-fill' + (pct === 100 ? ' success' : '');
+}
+
+function updateSubmitButton() {
+  const groups = getCategoryGroups();
+  let allDone = true, photoCount = 0, naCount = 0;
+  for (const [cat, subs] of Object.entries(groups)) {
+    subs.forEach(s => {
+      if (!isSubComplete(cat, s)) { allDone = false; return; }
+      const k = photoKey(cat, s.subcategory);
+      if (APP.naStatus[k]) naCount++;
+      else photoCount++;
+    });
+  }
+  const hasQueue = APP.uploadQueue.length > 0;
+  const show = allDone && !hasQueue;
+  document.getElementById('submit-section').style.display = show ? 'block' : 'none';
+  if (show) {
+    const parts = [];
+    if (photoCount) parts.push(`<span style="color:var(--success)">✓ ${photoCount} completed with photos</span>`);
+    if (naCount)    parts.push(`<span style="color:var(--na)">N/A ${naCount} marked not applicable</span>`);
+    document.getElementById('submit-summary').innerHTML = parts.join(' &nbsp;·&nbsp; ');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  SUBMIT
+// ════════════════════════════════════════════════════
+async function handleSubmit() {
+  // Final validation
+  const groups = getCategoryGroups();
+  let allDone  = true;
+  let totalPhotos = 0, totalNA = 0;
+  const naDetails = [];
+  for (const [cat, subs] of Object.entries(groups)) {
+    subs.forEach(s => {
+      const k = photoKey(cat, s.subcategory);
+      if (APP.naStatus[k]) {
+        totalNA++;
+        naDetails.push({ category: cat, subcategory: s.subcategory, status: 'N/A' });
+      } else {
+        const uploaded = (APP.photos[k] || []).filter(p => p.status === 'done').length;
+        totalPhotos += uploaded;
+        if (uploaded < Number(s.required)) allDone = false;
+      }
+    });
+  }
+  if (!allDone) { toast('Not all required photos are uploaded yet.', 'error'); return; }
+  if (APP.uploadQueue.length) { toast('Upload still in progress. Please wait.', 'warning'); return; }
+
+  showSpinner('Submitting project…');
+  try {
+    const res = await gasCall('submitProject', {
+      siteNumber:  APP.siteNumber,
+      userName:    APP.user?.name || '',
+      userEmail:   APP.user?.email || '',
+      totalPhotos,
+      totalNA,
+      naDetails,
+      date:        new Date().toISOString(),
+    });
+
+    if (res.success) {
+      document.getElementById('success-meta').innerHTML = `
+        <div class="success-meta-row"><span class="label">Site</span><span class="val">Site_${APP.siteNumber}</span></div>
+        <div class="success-meta-row"><span class="label">Technician</span><span class="val">${APP.user?.name}</span></div>
+        <div class="success-meta-row"><span class="label">Photos Uploaded</span><span class="val">${totalPhotos}</span></div>
+        <div class="success-meta-row"><span class="label" style="color:var(--na)">Marked N/A</span><span class="val" style="color:var(--na)">${totalNA} items</span></div>
+        <div class="success-meta-row"><span class="label">Date</span><span class="val">${new Date().toLocaleDateString()}</span></div>
+      `;
+      showPage('page-success');
+    } else {
+      toast('Submission failed: ' + (res.message || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    toast('Unable to submit. Check connection.', 'error');
+  } finally { hideSpinner(); }
+}
+
+async function startNewProject() {
+  APP.siteNumber = null;
+  APP.photos     = {};
+  APP.naStatus   = {};
+  APP.uploadQueue = [];
+  await saveState();
+  showPage('page-app');
+  initApp();
+}
+
+// ════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════
+(async function boot() {
+  await initDB();
+  await loadState();
+
+  // Update all logo images from config
+  document.querySelectorAll('.app-logo').forEach(img => { img.src = CONFIG.LOGO_PATH; });
+  document.getElementById('landing-logo').src = CONFIG.LOGO_PATH;
+
+  if (APP.user && APP.user.email) {
+    initApp();
+  } else {
+    showPage('page-landing');
+  }
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+
+// Keyboard dismiss on mobile
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+    closeImgViewer();
+  }
+});
+</script>
+</body>
+</html>
