@@ -129,6 +129,10 @@
       margin-bottom: 12px;
     }
     .access-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    /* Logo negru inversat la alb pe background inchis */
+    .access-logo-wrap img,
+    .app-header-logo,
+    .auth-header-logo { filter: brightness(0) invert(1); }
     .access-app-name {
       font-family: var(--font-display);
       font-size: 26px; font-weight: 700;
@@ -727,7 +731,7 @@
 </div>
 
 <!-- Hidden camera input -->
-<input type="file" id="camera-input" accept="image/*" capture="environment" multiple />
+<input type="file" id="camera-input" accept="image/*" capture="environment" multiple style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;" />
 
 <!-- ════════════════════════════════════════
      PAGE: ACCESS (landing + request + auto-login)
@@ -745,7 +749,7 @@
   </div>
   <div class="access-content">
     <div class="access-logo-wrap">
-      <img id="access-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS Logo" class="app-logo" onerror="this.style.display='none'" />
+      <img id="access-logo" src="NEW_LOGO_NTSolution_black.png" alt="NTS Logo" class="app-logo" onerror="this.style.display='none'" />
     </div>
     <div class="access-app-name">NTS <span>Field</span> Acceptance</div>
     <div class="access-tagline">Telecom Site Documentation Platform</div>
@@ -772,8 +776,6 @@
         </div>
       </div>
 
-      <!-- DEBUG — arata raspunsul brut de la GAS -->
-      <div id="gas-debug" style="display:none;margin-top:12px;padding:10px;background:#0a1628;border:1px solid #1e3a6e;border-radius:8px;font-size:11px;color:#7fa8d4;word-break:break-all;line-height:1.5;font-family:monospace;"></div>
 
       <!-- STATE: pending -->
       <div id="state-pending" style="display:none;">
@@ -813,7 +815,7 @@
   <!-- App Header -->
   <div class="app-header" id="app-header">
     <div class="app-header-top">
-      <img class="app-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+      <img class="app-header-logo app-logo" src="NEW_LOGO_NTSolution_black.png" alt="NTS" onerror="this.style.display='none'" />
       <div class="app-header-info">
         <div class="app-header-name">NTS <span>Field</span> Acceptance</div>
         <div class="app-header-user" id="header-user-info">Logged in as: —</div>
@@ -882,7 +884,7 @@
 ════════════════════════════════════════ -->
 <div id="page-success" class="page auth-page">
   <div class="auth-header">
-    <img class="auth-header-logo app-logo" src="LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png" alt="NTS" onerror="this.style.display='none'" />
+    <img class="auth-header-logo app-logo" src="NEW_LOGO_NTSolution_black.png" alt="NTS" onerror="this.style.display='none'" />
     <div class="auth-header-title">NTS <span>Field</span> Acceptance</div>
   </div>
   <div class="success-screen">
@@ -946,7 +948,7 @@ const CONFIG = {
   // Google Apps Script Web App URL — hardcodat:
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwStBt-yYZUsJjnVnGv4Yga7cAqRbwk7_wj6ixxe8WaZprqRWV7-W70OkiY1g702RXa/exec',
   // Logo path — schimbă doar numele fișierului fără modificări de cod:
-  LOGO_PATH: 'LOGO_NTSolution_ALB_ALBASTRU_DESCHIS.png',
+  LOGO_PATH: 'NEW_LOGO_NTSolution_black.png',
   // IndexedDB
   IDB_NAME: 'NTSFieldDB',
   IDB_VERSION: 1,
@@ -1143,7 +1145,6 @@ async function gasCall(action, data = {}) {
       redirect: 'follow',
     });
     const text = await resp.text();
-    debugGAS(action, text);
     try { return JSON.parse(text); }
     catch(e) { throw new Error('Upload error: ' + text.substring(0,200)); }
   }
@@ -1152,21 +1153,12 @@ async function gasCall(action, data = {}) {
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
   const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
   const text = await resp.text();
-  debugGAS(action, text);
   try { return JSON.parse(text); }
   catch(e) {
     throw new Error('GAS error: ' + text.substring(0, 300));
   }
 }
 
-function debugGAS(action, text) {
-  console.log('[GAS] action:', action, '| response:', text.substring(0, 500));
-  const el = document.getElementById('gas-debug');
-  if (el) {
-    el.style.display = 'block';
-    el.textContent = '[' + action + '] ' + text.substring(0, 400);
-  }
-}
 
 // ════════════════════════════════════════════════════
 //  ACCESS FLOW — unified request + auto-login + polling
