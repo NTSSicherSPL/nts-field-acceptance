@@ -1205,61 +1205,60 @@ async function handleAccessSubmit() {
   if (!email || !email.includes('@')) {
     toast('Please enter a valid email address.', 'error'); return;
   }
-
-  showSpinner('Checking access…');
-  try {
-    // First: check if already approved
-    const res = await gasCall('login', { email });
-
-    if (res.status === 'approved') {
-      // ✅ Auto-login immediately
-      APP.user = { name: res.name || name, email };
-      localStorage.setItem('nts_email', email);
-      await saveState();
-      hideSpinner();
-      toast(`Welcome, ${APP.user.name}!`, 'success');
-      initApp();
-      return;
-    }
-
-    if (res.status === 'rejected') {
-      hideSpinner();
-      setState('rejected');
-      return;
-    }
-
-    // status === 'pending' or 'not_found'
-    // If not found → submit access request
-    if (res.status === 'not_found') {
-      if (!name) {
-        hideSpinner();
-        toast('Please enter your full name to request access.', 'error');
-        document.getElementById('acc-name').focus();
-        return;
-      }
-      const reqRes = await gasCall('requestAccess', { name, email });
-      if (!reqRes.success && reqRes.message !== 'This email already has a request on file.') {
-        hideSpinner();
-        toast(reqRes.message || 'Error submitting request.', 'error');
-        return;
-      }
-    }
-
-    // Pending — show waiting state + start polling
-    _savedEmail = email;
-    _savedName  = name;
-    localStorage.setItem('nts_email', email);
-    if (name) localStorage.setItem('nts_name', name);
-
-    hideSpinner();
-    document.getElementById('pending-who').textContent = email;
-    setState('pending');
-    startPoll();
-
-  } catch(err) {
-    hideSpinner();
-    toast('Connection error. Please try again.', 'error');
+  if (!name) {
+    toast('Please enter your full name.', 'error');
+    document.getElementById('acc-name').focus(); return;
   }
+
+  showSpinner('Please wait…');
+
+  // PASUL 1: Incearca login direct
+  let loginRes = null;
+  try {
+    loginRes = await gasCall('login', { email });
+  } catch(e) {
+    loginRes = { status: 'error' };
+  }
+
+  // Daca e aprobat → intra direct
+  if (loginRes && loginRes.status === 'approved') {
+    APP.user = { name: loginRes.name || name, email };
+    localStorage.setItem('nts_email', email);
+    localStorage.setItem('nts_name', APP.user.name);
+    await saveState();
+    hideSpinner();
+    toast('Welcome, ' + APP.user.name + '!', 'success');
+    initApp();
+    return;
+  }
+
+  // Daca e respins
+  if (loginRes && loginRes.status === 'rejected') {
+    hideSpinner();
+    setState('rejected');
+    return;
+  }
+
+  // PASUL 2: Nu e aprobat (not_found / pending / eroare) → trimite request
+  let reqRes = null;
+  try {
+    reqRes = await gasCall('requestAccess', { name, email });
+  } catch(e) {
+    reqRes = { success: false, message: e.message };
+  }
+
+  hideSpinner();
+
+  // Salveaza email local si treci in starea pending indiferent de rezultat
+  // (daca e deja in lista e tot ok — asteapta aprobare)
+  _savedEmail = email;
+  _savedName  = name;
+  localStorage.setItem('nts_email', email);
+  localStorage.setItem('nts_name', name);
+
+  document.getElementById('pending-who').textContent = email;
+  setState('pending');
+  startPoll();
 }
 
 // ── POLLING ──
