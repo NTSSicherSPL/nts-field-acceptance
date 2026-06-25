@@ -40,7 +40,7 @@
     var blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
     document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
   })();
-  </script></script>  
+  </script></script></script>  
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -409,6 +409,99 @@
       margin-bottom: 24px; line-height: 1.5;
     }
 
+
+    /* ── SITE SETUP WIZARD ── */
+    .setup-wizard {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 20px; min-height: 100%;
+      background: var(--bg);
+    }
+    .setup-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%; max-width: 420px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .setup-card-hdr {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .setup-badge {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--brand); color: #fff;
+      font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .setup-badge.done { background: var(--success); }
+    .setup-card-hdr h3 {
+      font-family: var(--font-display); font-size: 16px;
+      font-weight: 700; letter-spacing: 0.5px; margin: 0;
+      color: var(--text);
+    }
+    .setup-card-hdr p {
+      font-size: 11px; color: var(--text-muted);
+      margin: 3px 0 0;
+    }
+    .setup-body { padding: 20px; }
+    .setup-progress {
+      display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    .setup-pill {
+      flex: 1; height: 4px; border-radius: 99px;
+      background: var(--border); transition: background 0.3s;
+    }
+    .setup-pill.active { background: var(--brand); }
+    .setup-pill.done   { background: var(--success); }
+
+    /* Project Cards */
+    .project-list {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 300px; overflow-y: auto; margin-bottom: 4px;
+    }
+    .project-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 10px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .project-card:active { transform: scale(0.98); }
+    .project-card.selected {
+      border-color: var(--brand);
+      background: rgba(41,170,225,0.06);
+    }
+    .project-card-radio {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .project-card.selected .project-card-radio {
+      border-color: var(--brand); background: var(--brand);
+    }
+    .project-card.selected .project-card-radio::after {
+      content: ''; width: 5px; height: 5px;
+      background: #fff; border-radius: 50%;
+    }
+    .project-card-info { flex: 1; min-width: 0; }
+    .project-card-name {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .project-card-desc {
+      font-size: 11px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: 2px;
+    }
     /* ── CATEGORY PAGE NAV ── */
     .app-content {
       padding: 0; display: flex;
@@ -1194,40 +1287,68 @@
     </div>
   </div>
 
-  <!-- SITE SETUP (shown when no site selected) -->
-  <div class="site-setup-screen" id="site-setup-screen">
-    <div class="site-setup-card">
-      <h2><span style="display:inline-flex;vertical-align:middle;margin-right:8px;margin-top:-3px;">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Tower base legs -->
-          <line x1="12" y1="4"  x2="5"  y2="20" stroke="#29AAE1" stroke-width="2" stroke-linecap="round"/>
-          <line x1="12" y1="4"  x2="19" y2="20" stroke="#29AAE1" stroke-width="2" stroke-linecap="round"/>
-          <!-- Cross braces -->
-          <line x1="7.5" y1="11" x2="16.5" y2="11" stroke="#29AAE1" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="6"   y1="16" x2="18"   y2="16" stroke="#29AAE1" stroke-width="1.5" stroke-linecap="round"/>
-          <!-- Diagonal braces -->
-          <line x1="7.5" y1="11" x2="10"  y2="16" stroke="#29AAE1" stroke-width="1"  stroke-linecap="round" stroke-opacity="0.6"/>
-          <line x1="16.5"y1="11" x2="14"  y2="16" stroke="#29AAE1" stroke-width="1"  stroke-linecap="round" stroke-opacity="0.6"/>
-          <!-- Mast top -->
-          <line x1="12" y1="1"  x2="12"  y2="5"  stroke="#29AAE1" stroke-width="2" stroke-linecap="round"/>
-          <!-- Signal waves -->
-          <path d="M9 2.5 Q10.5 1 12 2.5" stroke="#29AAE1" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.8"/>
-          <path d="M15 2.5 Q13.5 1 12 2.5" stroke="#29AAE1" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.8"/>
-          <path d="M7.5 3.5 Q9.5 0.5 12 2" stroke="#29AAE1" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
-          <path d="M16.5 3.5 Q14.5 0.5 12 2" stroke="#29AAE1" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
-          <!-- Base platform -->
-          <line x1="4" y1="20" x2="20" y2="20" stroke="#29AAE1" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </span>Site Setup</h2>
-      <p>Enter the site number to begin. This will be used as the project folder name in Google Drive.</p>
-      <div class="form-group">
-        <label>Site Number</label>
-        <input type="text" id="site-number-input" placeholder="e.g. 12345" autocomplete="off"
-          onkeydown="if(event.key==='Enter')confirmSite()" />
+  <!-- SITE SETUP WIZARD -->
+  <div class="setup-wizard" id="site-setup-screen">
+    <div class="setup-card">
+
+      <!-- Step 1: Site Number -->
+      <div id="setup-step-1">
+        <div class="setup-card-hdr">
+          <div class="setup-badge">1</div>
+          <div>
+            <h3>Site Number</h3>
+            <p>Enter the site number for this job</p>
+          </div>
+        </div>
+        <div class="setup-body">
+          <div class="setup-progress">
+            <div class="setup-pill active"></div>
+            <div class="setup-pill"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:20px;">
+            <label>Site Number</label>
+            <input type="text" id="site-number-input"
+              placeholder="e.g. 12345" autocomplete="off" inputmode="numeric"
+              style="font-size:22px;font-weight:700;letter-spacing:2px;text-align:center;"
+              onkeydown="if(event.key==='Enter')goToStep2()" />
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="goToStep2()">
+            Next — Select Project →
+          </button>
+        </div>
       </div>
-      <div class="form-actions">
-        <button class="btn btn-primary" onclick="confirmSite()">Start Documentation →</button>
+
+      <!-- Step 2: Project Selection -->
+      <div id="setup-step-2" style="display:none;">
+        <div class="setup-card-hdr">
+          <div class="setup-badge done">2</div>
+          <div>
+            <h3>Select Project</h3>
+            <p id="step2-site-label">Site —</p>
+          </div>
+        </div>
+        <div class="setup-body">
+          <div class="setup-progress">
+            <div class="setup-pill done"></div>
+            <div class="setup-pill active"></div>
+          </div>
+          <div id="project-list-wrap">
+            <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">
+              Loading projects...
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button class="btn btn-ghost" style="flex-shrink:0;padding:12px 16px;" onclick="backToStep1()">
+              ← Back
+            </button>
+            <button class="btn btn-primary" style="flex:1;" id="btn-start-doc"
+              onclick="confirmSite()" disabled>
+              Start Documentation →
+            </button>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -1365,10 +1486,12 @@ const CONFIG = {
 // ════════════════════════════════════════════════════
 let APP = {
   user: null,       // { name, email }
-  siteNumber: null, // e.g. "12345"
-  categories: [],   // loaded from GAS
-  photos: {},       // key: "cat|sub" → [{id, file, blob, name, status, driveId}]
-  naStatus: {},     // key: "cat|||sub" → { markedAt, markedBy } | null
+  siteNumber: null,
+  project: null,
+  projects: [],
+  categories: [],
+  photos: {},
+  naStatus: {},
   isOnline: navigator.onLine,
   uploadQueue: [],
   isUploading: false,
@@ -1436,6 +1559,7 @@ async function saveState() {
     key: 'session',
     user: APP.user,
     siteNumber: APP.siteNumber,
+    project: APP.project,
     naStatus: APP.naStatus,
     // Save photo metadata (not blobs - those stay in PHOTO_STORE)
     photosMeta: Object.fromEntries(
@@ -1452,6 +1576,7 @@ async function loadState() {
   if (!s) return;
   APP.user = s.user;
   APP.siteNumber = s.siteNumber;
+  APP.project = s.project || null;
   APP.naStatus = s.naStatus || {};
   // Restore photo metadata + reload blobs
   const allPending = await dbGetAll(CONFIG.PHOTO_STORE);
@@ -1572,28 +1697,35 @@ async function restorePendingBlobs() {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
+  // All actions use GET ?payload= — works cross-origin without CORS issues
+  // For uploadPhoto: base64 is compressed to ~300KB which fits in URL
+  const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
+  try {
+    const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const text = await resp.text();
+    if (text.trim().startsWith('<')) {
+      // Got HTML redirect (GAS login page) - try POST fallback
+      return await gasCallPost(payload);
+    }
+    return JSON.parse(text);
+  } catch(e) {
+    return await gasCallPost(payload);
+  }
+}
 
-  // uploadPhoto are base64 mare - trebuie POST
-  if (action === 'uploadPhoto') {
-    const resp = await fetch(CONFIG.GAS_URL, {
+async function gasCallPost(payload) {
+  // POST fallback with no-cors for upload
+  if (payload.action === 'uploadPhoto') {
+    await fetch(CONFIG.GAS_URL, {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
-      redirect: 'follow',
     });
-    const text = await resp.text();
-    try { return JSON.parse(text); }
-    catch(e) { throw new Error('Upload error: ' + text.substring(0,200)); }
+    // no-cors = opaque response, assume success
+    return { success: true, optimistic: true };
   }
-
-  // GET cu ?payload=JSON
-  const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
-  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-  const text = await resp.text();
-  try { return JSON.parse(text); }
-  catch(e) {
-    throw new Error('GAS error: ' + text.substring(0, 300));
-  }
+  throw new Error('POST fallback not available for: ' + payload.action);
 }
 
 
@@ -1740,6 +1872,8 @@ function handleLogout() {
   clearPoll();
   APP.user       = null;
   APP.siteNumber = null;
+  APP.project=null;
+  if(typeof _selectedProject!=='undefined')_selectedProject=null;
   APP.photos     = {};
   APP.naStatus   = {};
   saveState();
@@ -1759,38 +1893,24 @@ async function initApp() {
   if (APP.user) {
     document.getElementById('header-user-info').textContent = `Logged in as: ${APP.user.name}`;
   }
-  if (APP.siteNumber) {
-    showMainContent();
-    await loadCategories();
-    renderCategories();
-    updateOverallProgress();
-    processUploadQueue(); // resume any pending
-  } else {
-    document.getElementById('site-setup-screen').style.display = 'flex';
-    document.getElementById('app-content').style.display = 'none';
-    document.getElementById('site-display-row').style.display = 'none';
-    document.getElementById('overall-progress-wrap').style.display = 'none';
-  }
+  if(APP.siteNumber&&APP.project){if(typeof _selectedProject!=='undefined')_selectedProject=APP.project;showMainContent();await loadCategories();renderCategories();updateOverallProgress();processUploadQueue();}else{document.getElementById('site-setup-screen').style.display='flex';var _s1x=document.getElementById('setup-step-1');if(_s1x)_s1x.style.display='';var _s2x=document.getElementById('setup-step-2');if(_s2x)_s2x.style.display='none';document.getElementById('app-content').style.display='none';document.getElementById('site-display-row').style.display='none';document.getElementById('overall-progress-wrap').style.display='none';}
 }
 
-async function confirmSite() {
-  const val = document.getElementById('site-number-input').value.trim();
-  if (!val) { toast('Please enter a site number.', 'error'); return; }
-  APP.siteNumber = val;
-  await saveState();
-  showMainContent();
-  await loadCategories();
-  renderCategories();
-  updateOverallProgress();
-  processUploadQueue();
-}
+var _selectedProject=null;
+function goToStep2(){var val=document.getElementById('site-number-input').value.trim();if(!val){toast('Enter site number.','error');return;}APP.siteNumber=val;var lbl=document.getElementById('step2-site-label');if(lbl)lbl.textContent='Site '+val;var s1x=document.getElementById('setup-step-1');if(s1x)s1x.style.display='none';var s2x=document.getElementById('setup-step-2');if(s2x)s2x.style.display='';renderProjectList();}
+function backToStep1(){var s1x=document.getElementById('setup-step-1');if(s1x)s1x.style.display='';var s2x=document.getElementById('setup-step-2');if(s2x)s2x.style.display='none';_selectedProject=null;var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=true;}
+async function renderProjectList(){var wrap=document.getElementById('project-list-wrap');if(!wrap)return;wrap.innerHTML='<div style="text-align:center;padding:20px">Loading...</div>';var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=true;try{var r=await gasCall('getProjects');APP.projects=r.projects||[];}catch(e){APP.projects=[];}if(!APP.projects.length){wrap.innerHTML='<div style="text-align:center;padding:16px;color:var(--error)">No projects found.</div>';return;}var list=document.createElement('div');list.className='project-list';APP.projects.forEach(function(proj){var c=document.createElement('div');c.className='project-card'+(_selectedProject===proj.name?' selected':'');c.onclick=function(){selectProject(proj.name);};c.innerHTML='<div class="project-card-radio"></div><div class="project-card-info"><div class="project-card-name">'+proj.name+'</div>'+(proj.description?'<div class="project-card-desc">'+proj.description+'</div>':'')+'</div>';list.appendChild(c);});wrap.innerHTML='';wrap.appendChild(list);}
+function selectProject(name){_selectedProject=name;document.querySelectorAll('.project-card').forEach(function(c){c.classList.toggle('selected',c.querySelector('.project-card-name').textContent===name);});var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=false;}
+async function confirmSite(){if(!APP.siteNumber){var v=document.getElementById('site-number-input').value.trim();if(!v){toast('Enter site number.','error');return;}APP.siteNumber=v;}if(!_selectedProject){toast('Select a project.','error');return;}APP.project=_selectedProject;await saveState();showMainContent();await loadCategories();renderCategories();updateOverallProgress();processUploadQueue();}
+
 
 function showMainContent() {
   document.getElementById('site-setup-screen').style.display = 'none';
   document.getElementById('app-content').style.display = 'flex';
   document.getElementById('site-display-row').style.display = 'flex';
   document.getElementById('overall-progress-wrap').style.display = 'block';
-  document.getElementById('header-site-number').textContent = `Site_${APP.siteNumber}`;
+  document.getElementById('header-site-number').textContent='Site_'+APP.siteNumber;
+  var _pn=document.getElementById('header-project-name');if(_pn)_pn.textContent=APP.project||'';
 }
 
 function showSiteModal() {
@@ -1798,17 +1918,7 @@ function showSiteModal() {
   showModal('modal-site');
 }
 
-async function changeSiteNumber() {
-  const val = document.getElementById('modal-site-input').value.trim();
-  if (!val) { toast('Enter a site number.', 'error'); return; }
-  APP.siteNumber = val;
-  document.getElementById('header-site-number').textContent = `Site_${val}`;
-  await saveState();
-  closeModal('modal-site');
-  toast(`Site changed to Site_${val}`, 'success');
-  renderCategories();
-  updateOverallProgress();
-}
+async function changeSiteNumber(){APP.siteNumber=null;APP.project=null;APP.photos={};APP.naStatus={};APP.uploadQueue=[];if(typeof _selectedProject!=='undefined')_selectedProject=null;await saveState();closeModal('modal-site');showPage('page-app');initApp();}
 
 // ════════════════════════════════════════════════════
 //  CATEGORIES
@@ -1816,7 +1926,7 @@ async function changeSiteNumber() {
 async function loadCategories() {
   showSpinner('Loading categories...');
   try {
-    const res = await gasCall('getCategories');
+    const res = await gasCall('getCategories', { project: APP.project || '' });
     if (res.categories) {
       APP.categories = res.categories; // [{category, subcategory, required, active}]
     }
@@ -2370,6 +2480,11 @@ function driveUrlToOpen(url) {
   return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : url;
 }
 
+function driveUrlToOpen(url) {
+  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : url;
+}
+
 // ════════════════════════════════════════════════════
 //  N/A WORKFLOW
 // ════════════════════════════════════════════════════
@@ -2410,6 +2525,7 @@ async function confirmNA() {
   if (APP.isOnline) {
     gasCall('logNA', {
       siteNumber:  APP.siteNumber,
+      project:     APP.project || '',
       category:    cat,
       subcategory: sub,
       userName:    APP.user?.name  || '',
@@ -2469,37 +2585,48 @@ async function processUploadQueue() {
     updateQueueBar();
 
     try {
-      const b64 = await blobToBase64(photo.blob);
+      // Compress to 1500px for upload (reduces base64 from ~5MB to ~300KB)
+      const uploadBlob = photo.blob ? await compressImage(photo.blob, 1500, 0.80) : null;
+      if (!uploadBlob) {
+        // Blob lost - try to restore from IndexedDB
+        const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
+        if (!stored) { APP.uploadQueue.shift(); continue; }
+        photo.blob = stored.blob;
+      }
+      const b64 = await blobToBase64(uploadBlob || photo.blob);
+      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB');
+
       const res = await gasCall('uploadPhoto', {
         siteNumber:  APP.siteNumber,
+        project:     APP.project || '',
         category:    item.cat,
         subcategory: item.sub,
         fileName:    photo.name,
         base64Data:  b64,
         mimeType:    'image/jpeg',
-        userName:    APP.user?.name || '',
-        userEmail:   APP.user?.email || '',
+        userName:    APP.user ? APP.user.name  : '',
+        userEmail:   APP.user ? APP.user.email : '',
       });
 
-      if (res.success) {
+      if (res && res.success) {
         photo.status  = 'done';
         photo.driveId = res.fileId || '';
-        photo.blob    = null; // free memory
+        photo.blob    = null;
         await dbDelete(CONFIG.PHOTO_STORE, photo.id);
         APP.uploadQueue.shift();
-        toast(`Uploaded: ${photo.name}`, 'success', 2000);
+        toast('Uploaded: ' + photo.name, 'success', 2000);
       } else {
         photo.status = 'error';
         APP.uploadQueue.shift();
-        APP.uploadQueue.push(item); // re-queue at end
-        toast(`Upload failed: ${photo.name}. Retrying...`, 'warning');
-        await sleep(3000);
+        APP.uploadQueue.push(item);
+        await sleep(5000);
       }
     } catch(e) {
+      console.error('[UPLOAD]', e.message);
       photo.status = 'error';
-      APP.isOnline = false;
-      document.getElementById('offline-banner').classList.add('show');
-      break;
+      APP.uploadQueue.shift();
+      APP.uploadQueue.push(item); // retry later, don't stop queue
+      await sleep(5000);
     }
 
     refreshSubCard(item.key);
@@ -2637,45 +2764,20 @@ async function handleSubmit() {
   showSpinner('Submitting project...');
   try {
     const res = await gasCall('submitProject', {
-      siteNumber:  APP.siteNumber,
-      userName:    APP.user?.name || '',
-      userEmail:   APP.user?.email || '',
-      totalPhotos,
-      totalNA,
-      naDetails,
-      date:        new Date().toISOString(),
+      siteNumber: APP.siteNumber, project: APP.project||'',
+      userName: APP.user?APP.user.name:'', userEmail: APP.user?APP.user.email:'',
+      totalPhotos, totalNA, naDetails, date: new Date().toISOString(),
     });
 
     if (res.success) {
-      document.getElementById('success-meta-body').innerHTML = `
-        <div class="success-meta-row">
-          <span class="label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:2px;">
-              <line x1="12" y1="3"  x2="5"  y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <line x1="12" y1="3"  x2="19" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <line x1="7.5" y1="10" x2="16.5" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="6"   y1="16" x2="18"   y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="12" y1="1"  x2="12"   y2="4"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <line x1="4"  y1="20" x2="20"   y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>Site</span>
-          <span class="val">Site_${APP.siteNumber}</span>
-        </div>
-        <div class="success-meta-row">
-          <span class="label"><span class="icon">👤</span>Technician</span>
-          <span class="val">${APP.user?.name || '-'}</span>
-        </div>
-        <div class="success-meta-row">
-          <span class="label"><span class="icon">📷</span>Photos Uploaded</span>
-          <span class="val green">${totalPhotos} photos</span>
-        </div>
-        <div class="success-meta-row">
-          <span class="label"><span class="icon">✕</span>Marked N/A</span>
-          <span class="val ${totalNA > 0 ? 'orange' : ''}">${totalNA} item${totalNA !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="success-meta-row">
-          <span class="label"><span class="icon">📅</span>Submitted</span>
-          <span class="val">${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
-        </div>
-      `
+      var _mEl=document.getElementById('success-meta-body');
+      _mEl.innerHTML=
+        '<div class="success-meta-row"><span class="label">Site</span><span class="val">Site_'+APP.siteNumber+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Project</span><span class="val">'+(APP.project||'-')+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Technician</span><span class="val">'+(APP.user?APP.user.name:'-')+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Photos</span><span class="val green">'+totalPhotos+' uploaded</span></div>'+
+        '<div class="success-meta-row"><span class="label">N/A Items</span><span class="val">'+totalNA+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Date</span><span class="val">'+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</span></div>'
       showPage('page-success');
     } else {
       toast('Submission failed: ' + (res.message || 'Unknown error'), 'error');
@@ -2685,15 +2787,7 @@ async function handleSubmit() {
   } finally { hideSpinner(); }
 }
 
-async function startNewProject() {
-  APP.siteNumber = null;
-  APP.photos     = {};
-  APP.naStatus   = {};
-  APP.uploadQueue = [];
-  await saveState();
-  showPage('page-app');
-  initApp();
-}
+async function startNewProject(){APP.siteNumber=null;APP.project=null;APP.photos={};APP.naStatus={};APP.uploadQueue=[];if(typeof _selectedProject!=='undefined')_selectedProject=null;await saveState();showPage('page-app');initApp();}
 
 // ════════════════════════════════════════════════════
 //  BOOT
@@ -2705,39 +2799,9 @@ async function startNewProject() {
   // Update logos from config
   document.querySelectorAll('.app-logo').forEach(img => { img.src = CONFIG.LOGO_PATH; });
 
-  // ── Service Worker — cu versiune si auto-update ──
-  if ('serviceWorker' in navigator) {
-    // Versiunea din timestamp la build — forteaza SW nou la fiecare deploy
-    const SW_URL = 'sw.js?v=' + '1782371540';
+  // Offline support via IndexedDB — no Service Worker needed
 
-    navigator.serviceWorker.register(SW_URL).then(reg => {
-      // Verifica update imediat la deschidere
-      reg.update();
-
-      // Cand SW nou e gata — trimite mesaj sa preia controlul imediat
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Nou SW disponibil — reload automat silentios
-            newWorker.postMessage({ type: 'SKIP_WAITING' });
-          }
-        });
-      });
-    }).catch(err => console.warn('[SW] Register failed:', err));
-
-    // Cand SW nou preia controlul — reincarca pagina cu versiunea noua
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        console.log('[SW] New version active — reloading');
-        window.location.reload();
-      }
-    });
-  }
-
-  // ── Auto-login: if session already has approved user ──
+    // ── Auto-login: if session already has approved user ──
   if (APP.user && APP.user.email) {
     // Silently re-verify with server (in case access was revoked)
     showPage('page-access');
@@ -2833,6 +2897,6 @@ document.addEventListener('keydown', e => {
     closeImgViewer();
   }
 });
-</script></script>
+</script></script></script>
 </body>
 </html>
