@@ -40,7 +40,7 @@
     var blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
     document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
   })();
-  </script>  
+  </script></script>  
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -1522,17 +1522,50 @@ function formatPhotoName(siteNumber, cat, sub, idx) {
 // ════════════════════════════════════════════════════
 //  ONLINE / OFFLINE
 // ════════════════════════════════════════════════════
-window.addEventListener('online', () => {
-  APP.isOnline = true;
+window.addEventListener('online', async () => {
+  APP.isOnline    = true;
+  APP.isUploading = false;
   document.getElementById('offline-banner').classList.remove('show');
-  toast('Connection restored - Upload resumed', 'success');
-  processUploadQueue();
+  toast('Connection restored - resuming upload...', 'success', 3000);
+  await restorePendingBlobs();
+  setTimeout(() => processUploadQueue(), 1500);
 });
+
 window.addEventListener('offline', () => {
-  APP.isOnline = false;
+  APP.isOnline    = false;
+  APP.isUploading = false;
   document.getElementById('offline-banner').classList.add('show');
   toast('Offline - Upload paused. Photos saved locally.', 'warning', 5000);
 });
+
+async function restorePendingBlobs() {
+  if (!APP.db) return;
+  try {
+    const stored = await dbGetAll(CONFIG.PHOTO_STORE);
+    const blobMap = {};
+    stored.forEach(p => { blobMap[p.id] = p; });
+    for (const photos of Object.values(APP.photos)) {
+      photos.forEach(p => {
+        if (p.status === 'uploading') p.status = 'queued';
+        if (p.status !== 'done' && !p.blob && blobMap[p.id]) {
+          p.blob     = blobMap[p.id].blob;
+          p.thumbUrl = blobMap[p.id].thumbUrl || p.thumbUrl;
+        }
+      });
+    }
+    const inQ = new Set(APP.uploadQueue.map(q => q.photoId));
+    for (const [key, photos] of Object.entries(APP.photos)) {
+      const [cat, sub] = key.split('|||');
+      photos.forEach(p => {
+        if (p.status === 'queued' && p.blob && !inQ.has(p.id)) {
+          APP.uploadQueue.push({ key, cat, sub, photoId: p.id });
+          inQ.add(p.id);
+        }
+      });
+    }
+    updateQueueBar();
+  } catch(e) { console.warn('[RESTORE]', e); }
+}
 
 // ════════════════════════════════════════════════════
 //  GAS API CALLS
@@ -1931,36 +1964,38 @@ function catNavPrev() {
 }
 
 function buildCategoryPage(cat, subs, idx) {
-  const total  = subs.length;
-  const done   = subs.filter(s => isSubComplete(cat, s)).length;
+  const total   = subs.length;
+  const done    = subs.filter(s => isSubComplete(cat, s)).length;
   const allDone = done === total;
   const naDone  = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
 
-  let badgeClass = '', badgeText = done + '/' + total + ' done';
-  if (allDone)      badgeClass = 'complete';
+  let badgeClass = '';
+  if (allDone)         badgeClass = 'complete';
   else if (naDone > 0) badgeClass = 'na';
   else if (done > 0)   badgeClass = 'partial';
 
   const page = document.createElement('div');
-  page.className = 'cat-page';
+  page.className   = 'cat-page';
   page.dataset.cat = cat;
   page.dataset.idx = idx;
 
-  const pct = total ? Math.round((done / total) * 100) : 0;
+  // Build header with string concat to avoid template literal escaping
+  const hdr = document.createElement('div');
+  hdr.className = 'cat-page-header';
+  hdr.innerHTML =
+    '<span class="cat-page-icon">' + getCatIcon(cat) + '</span>' +
+    '<div class="cat-page-info">' +
+      '<div class="cat-page-name">' + cat + '</div>' +
+      '<div class="cat-page-progress">' + done + ' of ' + total + ' subcategories complete</div>' +
+    '</div>' +
+    '<span class="cat-page-badge ' + badgeClass + '">' + done + '/' + total + '</span>';
 
-  page.innerHTML = `
-    <div class="cat-page-header">
-      <span class="cat-page-icon">\${getCatIcon(cat)}</span>
-      <div class="cat-page-info">
-        <div class="cat-page-name">\${cat}</div>
-        <div class="cat-page-progress">\${done} of \${total} subcategories complete</div>
-      </div>
-      <span class="cat-page-badge \${badgeClass}">\${done}/\${total}</span>
-    </div>
-    <div class="subcategory-list" id="sublist-\${idx}"></div>
-  `;
+  const subList = document.createElement('div');
+  subList.className = 'subcategory-list';
+  subList.id = 'sublist-' + idx;
 
-  const subList = page.querySelector('.subcategory-list');
+  page.appendChild(hdr);
+  page.appendChild(subList);
   subs.forEach(s => subList.appendChild(buildSubCard(cat, s)));
 
   return page;
@@ -2283,19 +2318,31 @@ function showInfoModal(cat, sub) {
   if (subDef.imageUrls && subDef.imageUrls.trim()) {
     const urls = subDef.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
     if (urls.length > 0) {
-      html += `<div class="info-images-label">📸 Sample Photos</div>`;
-      html += `<div class="info-images-grid">`;
+      const _lbl = document.createElement('div');
+      _lbl.className = 'info-images-label';
+      _lbl.textContent = '📸 Sample Photos';
+      body.appendChild(_lbl);
+      const _grid = document.createElement('div');
+      _grid.className = 'info-images-grid';
       urls.forEach((url, i) => {
-        // Convert Google Drive share URL to direct embed URL
         const embedUrl = driveUrlToEmbed(url);
-        html += `
-          <div class="info-img-wrap" onclick="openImgViewer('${embedUrl}')">
-            <img src="${embedUrl}" alt="Sample ${i+1}"
-              onerror="this.parentElement.innerHTML='<div class=\"info-img-error\">⚠️ Image unavailable</div>'"
-              loading="lazy" />
-          </div>`;
+        const openUrl  = typeof driveUrlToOpen === 'function' ? driveUrlToOpen(url) : url;
+        const wrap = document.createElement('div');
+        wrap.className = 'info-img-wrap';
+        wrap.onclick = () => window.open(openUrl, '_blank');
+        const img = document.createElement('img');
+        img.alt = 'Sample ' + (i + 1);
+        img.loading = 'lazy';
+        img.onerror = function() {
+          wrap.innerHTML = '<div class="info-img-error" style="cursor:pointer" onclick="event.stopPropagation();window.open(\'' + openUrl + '\',\'_blank\')">' +
+            '<div style="font-size:24px;margin-bottom:4px">🖼️</div>' +
+            '<div style="font-size:10px;color:var(--brand)">Open in Drive</div></div>';
+        };
+        img.src = embedUrl;
+        wrap.appendChild(img);
+        _grid.appendChild(wrap);
       });
-      html += `</div>`;
+      body.appendChild(_grid);
     }
   }
 
@@ -2303,7 +2350,6 @@ function showInfoModal(cat, sub) {
     html = `<div class="info-no-content">ℹ️ No instructions added yet.<br><span style="font-size:11px;color:var(--text-dim)">Add instructions and image URLs in the Categories sheet.</span></div>`;
   }
 
-  body.innerHTML = html;
   showModal('modal-info');
 }
 
@@ -2313,10 +2359,15 @@ function driveUrlToEmbed(url) {
   // Embed:  https://drive.google.com/thumbnail?id=FILE_ID&sz=w600
   const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (match) {
-    return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w600';
+    return 'https://drive.google.com/uc?export=view&id=' + match[1];
   }
   // Already direct or unknown format - use as-is
   return url;
+}
+
+function driveUrlToOpen(url) {
+  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : url;
 }
 
 // ════════════════════════════════════════════════════
@@ -2782,6 +2833,6 @@ document.addEventListener('keydown', e => {
     closeImgViewer();
   }
 });
-</script>
+</script></script>
 </body>
 </html>
