@@ -2405,7 +2405,6 @@ async function removePhoto(key, idx) {
 //  INFO MODAL
 // ════════════════════════════════════════════════════
 function showInfoModal(cat, sub) {
-  // Find category data
   const groups = getCategoryGroups();
   const subs   = groups[cat] || [];
   const subDef = subs.find(s => s.subcategory === sub);
@@ -2415,49 +2414,79 @@ function showInfoModal(cat, sub) {
   document.getElementById('info-modal-title').textContent = sub;
 
   const body = document.getElementById('info-modal-body');
+  body.innerHTML = '';
 
   // Required badge
-  let html = `<div class="info-required-badge">📷 ${subDef.required} photo${subDef.required !== 1 ? 's' : ''} required</div>`;
+  const badge = document.createElement('div');
+  badge.className = 'info-required-badge';
+  badge.textContent = '\u{1F4F7} ' + subDef.required + ' photo' + (subDef.required !== 1 ? 's' : '') + ' required';
+  body.appendChild(badge);
 
-  // Instructions text
+  // Instructions
   if (subDef.instructions) {
-    html += `<div class="info-instructions">${subDef.instructions}</div>`;
+    const instr = document.createElement('div');
+    instr.className = 'info-instructions';
+    instr.textContent = subDef.instructions;
+    body.appendChild(instr);
   }
 
-  // Sample images from Google Drive
+  // Sample images
   if (subDef.imageUrls && subDef.imageUrls.trim()) {
-    const urls = subDef.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
-    if (urls.length > 0) {
-      const _lbl = document.createElement('div');
-      _lbl.className = 'info-images-label';
-      _lbl.textContent = '📸 Sample Photos';
-      body.appendChild(_lbl);
-      const _grid = document.createElement('div');
-      _grid.className = 'info-images-grid';
-      urls.forEach((url, i) => {
+    const urls = subDef.imageUrls.split(',').map(function(u) { return u.trim(); }).filter(Boolean);
+    if (urls.length) {
+      const lbl = document.createElement('div');
+      lbl.className = 'info-images-label';
+      lbl.textContent = '\u{1F4F8} Sample Photos';
+      body.appendChild(lbl);
+      const grid = document.createElement('div');
+      grid.className = 'info-images-grid';
+      urls.forEach(function(url, i) {
         const embedUrl = driveUrlToEmbed(url);
         const openUrl  = typeof driveUrlToOpen === 'function' ? driveUrlToOpen(url) : url;
         const wrap = document.createElement('div');
         wrap.className = 'info-img-wrap';
-        wrap.onclick = () => window.open(openUrl, '_blank');
+        wrap.onclick = function() { window.open(openUrl, '_blank'); };
         const img = document.createElement('img');
         img.alt = 'Sample ' + (i + 1);
         img.loading = 'lazy';
         img.onerror = function() {
-          wrap.innerHTML = '<div class="info-img-error" style="cursor:pointer" onclick="event.stopPropagation();window.open(\'' + openUrl + '\',\'_blank\')">' +
-            '<div style="font-size:24px;margin-bottom:4px">🖼️</div>' +
-            '<div style="font-size:10px;color:var(--brand)">Open in Drive</div></div>';
+          const err = document.createElement('div');
+          err.className = 'info-img-error';
+          err.style.cursor = 'pointer';
+          err.onclick = function(e) { e.stopPropagation(); window.open(openUrl, '_blank'); };
+          const icon = document.createElement('div');
+          icon.style.fontSize = '24px';
+          icon.style.marginBottom = '4px';
+          icon.textContent = '\u{1F5BC}\uFE0F';
+          const link = document.createElement('div');
+          link.style.fontSize = '10px';
+          link.style.color = 'var(--brand)';
+          link.textContent = 'Open in Drive';
+          err.appendChild(icon);
+          err.appendChild(link);
+          wrap.innerHTML = '';
+          wrap.appendChild(err);
         };
         img.src = embedUrl;
         wrap.appendChild(img);
-        _grid.appendChild(wrap);
+        grid.appendChild(wrap);
       });
-      body.appendChild(_grid);
+      body.appendChild(grid);
     }
   }
 
+  // No content fallback
   if (!subDef.instructions && (!subDef.imageUrls || !subDef.imageUrls.trim())) {
-    html = `<div class="info-no-content">ℹ️ No instructions added yet.<br><span style="font-size:11px;color:var(--text-dim)">Add instructions and image URLs in the Categories sheet.</span></div>`;
+    const empty = document.createElement('div');
+    empty.className = 'info-no-content';
+    const icon = document.createElement('span');
+    icon.textContent = 'i  No instructions added yet.';
+    const hint = document.createElement('span');
+    hint.style.cssText = 'display:block;font-size:11px;color:var(--text-dim);margin-top:4px';
+    hint.textContent = 'Add instructions in the Category_Master sheet.';
+    empty.appendChild(icon);
+    empty.appendChild(hint);
+    body.appendChild(empty);
   }
 
   showModal('modal-info');
