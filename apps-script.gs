@@ -1,18 +1,19 @@
 /**
- * NTS Field Acceptance — Google Apps Script Backend v2.0
+ * NTS Field Acceptance — Google Apps Script Backend v3.1
  * ═══════════════════════════════════════════════════════
  * PASI DEPLOY:
- * 1. Inlocuieste codul in script.google.com
- * 2. Salveaza (Ctrl+S)
- * 3. Run > upgradeSheets   (adauga coloanele noi la sheet-urile existente)
+ * 1. Înlocuiește codul în script.google.com
+ * 2. Salvează (Ctrl+S)
+ * 3. Run > setupSheets   ← rulează DOAR PRIMA DATĂ (migrare + creare)
  * 4. Deploy > Manage Deployments > Edit > New Version > Deploy
  *
  * STRUCTURA SPREADSHEET:
- *   Users      — Name | Email | Status | Date Requested
- *   Projects   — Project Name | Description | Active
- *   Categories — Project | Category | Subcategory | Required Photos | Active | Instructions | Image URLs
- *   Submissions— Site Number | Project | User Name | User Email | Date | Total Photos | N/A Items | Status | N/A Details
- *   NA_Log     — Site Number | Project | Category | Subcategory | User Name | User Email | Date & Time | Status
+ *   Users              — Name | Email | Status | Date Requested
+ *   Projects           — Project Name | Description | Active
+ *   Category_Master    — ID | Category | Subcategory | Default Required Photos | Instructions | Image URLs
+ *   Project_Categories — Project | Category ID | Required Photos Override | Active
+ *   Submissions        — Site Number | Project | User Name | User Email | Date | Total Photos | N/A Items | Status | N/A Details
+ *   NA_Log             — Site Number | Project | Category | Subcategory | User Name | User Email | Date & Time | Status
  */
 
 var SPREADSHEET_ID  = '1GRUPV9eAIKlv9P2JFpWEPUZ6iVZ394l8_nz9fN2yypc';
@@ -20,148 +21,346 @@ var DRIVE_FOLDER_ID = '1ug6huCS_OZEbKzaO5d-WQ1hWC-XBFHMy';
 
 var SHEET_USERS       = 'Users';
 var SHEET_PROJECTS    = 'Projects';
-var SHEET_CATEGORIES  = 'Categories';
+var SHEET_CAT_MASTER  = 'Category_Master';
+var SHEET_PROJ_CATS   = 'Project_Categories';
 var SHEET_SUBMISSIONS = 'Submissions';
 var SHEET_NA_LOG      = 'NA_Log';
 
-// -----------------------------------------------
-//  SPREADSHEET ACCESS
-// -----------------------------------------------
-function getSpreadsheet() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
-}
+// Sheet-uri vechi care vor fi șterse după migrare
+var SHEET_OLD_CATEGORIES = 'Categories';
 
-// -----------------------------------------------
-//  UPGRADE SHEETS
-//  Adauga coloane/sheet-uri noi fara a sterge date
-//  Run > upgradeSheets din editorul GAS
-// -----------------------------------------------
-function upgradeSheets() {
+// ═══════════════════════════════════════════════════════
+//  SETUP SHEETS — rulează PRIMA DATĂ după deploy
+//  1. Creează sheet-urile noi
+//  2. Migrează datele din vechiul Categories (dacă există)
+//  3. Curăță sheet-urile vechi/duplicate
+//  4. Formatează tot
+// ═══════════════════════════════════════════════════════
+function setupSheets() {
   var ss = getSpreadsheet();
+  var log = [];
 
-  // ── PROJECTS sheet (nou) ──
-  var proj = ss.getSheetByName(SHEET_PROJECTS);
-  if (!proj) {
-    proj = ss.insertSheet(SHEET_PROJECTS);
-    proj.appendRow(['Project Name', 'Description', 'Active']);
-    styleHeader(proj, 3);
-    // Date initiale
-    proj.appendRow(['Overview Acceptance', 'Standard telecom site overview acceptance', 'TRUE']);
-    proj.appendRow(['Full Site Audit',     'Complete audit with all equipment categories', 'TRUE']);
-    proj.setColumnWidth(1, 250);
-    proj.setColumnWidth(2, 350);
-    proj.setColumnWidth(3, 80);
-    var activeRule = SpreadsheetApp.newDataValidation().requireValueInList(['TRUE','FALSE'],true).build();
-    proj.getRange('C2:C1000').setDataValidation(activeRule);
-    Logger.log('Created Projects sheet');
+  // ── STEP 1: Asigură sheet-urile de bază (Users, Projects) ──
+  ensureUsers(ss, log);
+  ensureProjects(ss, log);
+
+  // ── STEP 2: Creează Category_Master ──
+  var cm = ensureCategoryMaster(ss, log);
+
+  // ── STEP 3: Migrează din vechiul Categories dacă există ──
+  var oldCats = ss.getSheetByName(SHEET_OLD_CATEGORIES);
+  if (oldCats) {
+    migrateOldCategories(ss, oldCats, cm, log);
   }
 
-  // ── CATEGORIES — adauga coloana Project (col A) daca lipseste ──
-  var c = ss.getSheetByName(SHEET_CATEGORIES);
-  if (!c) {
-    c = ss.insertSheet(SHEET_CATEGORIES);
-    c.appendRow(['Project', 'Category', 'Subcategory', 'Required Photos', 'Active', 'Instructions', 'Image URLs']);
-    styleHeader(c, 7);
-    // Date initiale cu proiect
-    c.appendRow(['Overview Acceptance', 'Overview Location', 'Key Safe',      5, 'TRUE', 'Photo the key safe box mounted on the wall or fence. Include full view and close-up of lock.', '']);
-    c.appendRow(['Overview Acceptance', 'Overview Location', 'Access Gate',   3, 'TRUE', 'Capture access gate from outside and inside. Include padlock and signage.', '']);
-    c.appendRow(['Overview Acceptance', 'Overview Location', 'Site Entrance', 2, 'TRUE', 'Photograph main site entrance, barriers, signs and road markings.', '']);
-    c.appendRow(['Overview Acceptance', 'Equipment',         'Cabinet',       4, 'TRUE', 'Open cabinet doors and photograph interior. Include all shelves and cabling.', '']);
-    c.appendRow(['Overview Acceptance', 'Equipment',         'Power Supply',  3, 'TRUE', 'Photograph PSU unit, input connections and output terminals.', '']);
-    c.appendRow(['Overview Acceptance', 'Final Status',      'Site Overview', 5, 'TRUE', 'General overview photos of complete site from all four directions.', '']);
-    c.appendRow(['Full Site Audit',     'Overview Location', 'Key Safe',      5, 'TRUE', 'Photo the key safe box.', '']);
-    c.appendRow(['Full Site Audit',     'Equipment',         'Cabinet',       4, 'TRUE', 'Cabinet interior.', '']);
-    c.appendRow(['Full Site Audit',     'Equipment',         'Power Supply',  3, 'TRUE', 'PSU unit photos.', '']);
-    c.appendRow(['Full Site Audit',     'Equipment',         'Labels',        2, 'TRUE', 'All equipment labels and serial numbers.', '']);
-    c.appendRow(['Full Site Audit',     'Antenna',           'Sector A',      6, 'TRUE', 'Antenna sector A, all angles.', '']);
-    c.appendRow(['Full Site Audit',     'Antenna',           'Sector B',      6, 'TRUE', 'Antenna sector B, all angles.', '']);
-    c.appendRow(['Full Site Audit',     'Grounding',         'Earth Bar',     4, 'TRUE', 'Earth bar and all connections.', '']);
-    c.appendRow(['Full Site Audit',     'Final Status',      'Site Overview', 5, 'TRUE', 'Complete site overview.', '']);
-    Logger.log('Created Categories sheet with projects');
-  } else {
-    // Sheet existent - verifica daca are coloana Project
-    var headers = c.getRange(1, 1, 1, c.getLastColumn()).getValues()[0];
-    var hasProject = headers[0] === 'Project';
-    if (!hasProject) {
-      // Insereaza coloana Project la inceput
-      c.insertColumnBefore(1);
-      c.getRange(1, 1).setValue('Project').setFontWeight('bold').setBackground('#0a1628').setFontColor('#29AAE1');
-      // Completeaza cu proiectul default pentru randurile existente
-      var lastRow = c.getLastRow();
-      for (var i = 2; i <= lastRow; i++) {
-        c.getRange(i, 1).setValue('Overview Acceptance');
-      }
-      Logger.log('Added Project column to existing Categories sheet');
-    }
-    // Asigura coloanele Instructions si Image URLs (col 6 si 7 in noua structura)
-    var newHeaders = c.getRange(1, 1, 1, c.getLastColumn()).getValues()[0];
-    var lastCol = newHeaders.length;
-    if (lastCol < 6) { c.getRange(1, 6).setValue('Instructions'); styleHeaderCell(c, 1, 6); }
-    if (lastCol < 7) { c.getRange(1, 7).setValue('Image URLs');   styleHeaderCell(c, 1, 7); }
-  }
-  c.setColumnWidth(1, 200);
-  c.setColumnWidth(2, 200);
-  c.setColumnWidth(3, 200);
-  c.setColumnWidth(4, 130);
-  c.setColumnWidth(5, 80);
-  c.setColumnWidth(6, 400);
-  c.setColumnWidth(7, 350);
-  if (c.getFrozenRows() < 1) c.setFrozenRows(1);
-  var activeRule2 = SpreadsheetApp.newDataValidation().requireValueInList(['TRUE','FALSE'],true).build();
-  c.getRange('E2:E2000').setDataValidation(activeRule2);
+  // ── STEP 4: Creează Project_Categories ──
+  ensureProjectCategories(ss, log);
 
-  // ── SUBMISSIONS sheet (inlocuieste Projects din v1) ──
-  var sub = ss.getSheetByName(SHEET_SUBMISSIONS);
-  if (!sub) {
-    sub = ss.insertSheet(SHEET_SUBMISSIONS);
-    sub.appendRow(['Site Number','Project','User Name','User Email','Date','Total Photos','N/A Items','Status','N/A Details']);
-    styleHeader(sub, 9);
-    [120,200,160,200,180,120,90,100,400].forEach(function(w,i){ sub.setColumnWidth(i+1,w); });
-    Logger.log('Created Submissions sheet');
-  }
+  // ── STEP 5: Asigură Submissions și NA_Log ──
+  ensureSubmissions(ss, log);
+  ensureNALog(ss, log);
 
-  // ── NA_LOG — adauga coloana Project daca lipseste ──
-  var na = ss.getSheetByName(SHEET_NA_LOG);
-  if (!na) {
-    na = ss.insertSheet(SHEET_NA_LOG);
-    na.appendRow(['Site Number','Project','Category','Subcategory','User Name','User Email','Date & Time','Status']);
-    styleHeader(na, 8);
-    Logger.log('Created NA_Log sheet');
-  }
+  // ── STEP 6: Curăță sheet-urile vechi ──
+  cleanupOldSheets(ss, log);
 
-  // ── USERS — verifica ──
-  var u = ss.getSheetByName(SHEET_USERS);
-  if (!u) {
-    u = ss.insertSheet(SHEET_USERS);
-    u.appendRow(['Name','Email','Status','Date Requested']);
-    styleHeader(u, 4);
-    var sRule = SpreadsheetApp.newDataValidation().requireValueInList(['Pending','Approved','Rejected'],true).build();
-    u.getRange('C2:C1000').setDataValidation(sRule);
-    [200,260,140,200].forEach(function(w,i){ u.setColumnWidth(i+1,w); });
-    Logger.log('Created Users sheet');
-  }
+  // ── STEP 7: Ordonează sheet-urile ──
+  orderSheets(ss);
 
-  Logger.log('upgradeSheets DONE');
+  Logger.log(log.join('\n'));
+  SpreadsheetApp.getUi().alert(
+    '✅ Setup complet!\n\n' + log.join('\n') +
+    '\n\n📋 Pași următori:\n' +
+    '1. Verifică "Category_Master" — adaugă/editează categoriile tale\n' +
+    '2. Verifică "Project_Categories" — alocă categoriile la proiecte\n' +
+    '3. Deploy > New Version în Apps Script'
+  );
 }
 
+// -----------------------------------------------
+//  ENSURE USERS
+// -----------------------------------------------
+function ensureUsers(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_USERS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_USERS);
+    sheet.appendRow(['Name', 'Email', 'Status', 'Date Requested']);
+    styleHeader(sheet, 4);
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Pending', 'Approved', 'Rejected'], true).build();
+    sheet.getRange('C2:C1000').setDataValidation(rule);
+    [200, 260, 140, 200].forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
+    log.push('✓ Created: Users');
+  } else {
+    log.push('→ Kept existing: Users (' + (sheet.getLastRow() - 1) + ' users)');
+  }
+}
+
+// -----------------------------------------------
+//  ENSURE PROJECTS
+// -----------------------------------------------
+function ensureProjects(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_PROJECTS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PROJECTS);
+    sheet.appendRow(['Project Name', 'Description', 'Active']);
+    styleHeader(sheet, 3);
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['TRUE', 'FALSE'], true).build();
+    sheet.getRange('C2:C1000').setDataValidation(rule);
+    sheet.setColumnWidth(1, 250);
+    sheet.setColumnWidth(2, 350);
+    sheet.setColumnWidth(3, 80);
+    log.push('✓ Created: Projects (empty — adaugă proiectele tale)');
+  } else {
+    log.push('→ Kept existing: Projects (' + (sheet.getLastRow() - 1) + ' proiecte)');
+  }
+}
+
+// -----------------------------------------------
+//  ENSURE CATEGORY_MASTER
+//  Returnează sheet-ul (nou sau existent)
+// -----------------------------------------------
+function ensureCategoryMaster(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_CAT_MASTER);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_CAT_MASTER);
+    sheet.appendRow(['ID', 'Category', 'Subcategory', 'Default Required Photos', 'Instructions', 'Image URLs']);
+    styleHeader(sheet, 6);
+    sheet.setColumnWidth(1, 50);
+    sheet.setColumnWidth(2, 180);
+    sheet.setColumnWidth(3, 200);
+    sheet.setColumnWidth(4, 170);
+    sheet.setColumnWidth(5, 420);
+    sheet.setColumnWidth(6, 300);
+    sheet.setFrozenRows(1);
+    // Validare: Required Photos să fie număr
+    var numRule = SpreadsheetApp.newDataValidation()
+      .requireNumberGreaterThan(0).build();
+    sheet.getRange('D2:D5000').setDataValidation(numRule);
+    log.push('✓ Created: Category_Master (empty — datele vor fi migrate din Categories)');
+  } else {
+    log.push('→ Kept existing: Category_Master (' + (sheet.getLastRow() - 1) + ' categorii)');
+  }
+  return sheet;
+}
+
+// -----------------------------------------------
+//  MIGRARE din vechiul sheet Categories
+//  Structura veche: Project | Category | Subcategory | Required Photos | Active | Instructions | Image URLs
+//  sau:             Category | Subcategory | Required Photos | Active | Instructions | Image URLs
+// -----------------------------------------------
+function migrateOldCategories(ss, oldSheet, masterSheet, log) {
+  var lastRow = oldSheet.getLastRow();
+  if (lastRow < 2) {
+    log.push('⚠ Vechiul Categories e gol — nimic de migrat');
+    return;
+  }
+
+  var totalCols = oldSheet.getLastColumn();
+  var rows = oldSheet.getRange(2, 1, lastRow - 1, totalCols).getValues();
+  var headers = oldSheet.getRange(1, 1, 1, totalCols).getValues()[0];
+
+  // Detectează automat structura: are coloana "Project" la start?
+  var hasProject = headers[0].toString().toLowerCase().indexOf('project') >= 0;
+  var offset = hasProject ? 1 : 0; // câte coloane de shift
+
+  // Colectează subcategorii unice (Category + Subcategory)
+  var seen = {};       // key: "Category|||Subcategory" → row data
+  var masterSheet_lastRow = masterSheet.getLastRow();
+
+  // Verifică ce există deja în Category_Master
+  var existingInMaster = {};
+  if (masterSheet_lastRow >= 2) {
+    masterSheet.getRange(2, 1, masterSheet_lastRow - 1, 3).getValues().forEach(function(r) {
+      if (r[1] && r[2]) existingInMaster[r[1] + '|||' + r[2]] = true;
+    });
+  }
+
+  // Găsește ultimul ID din Category_Master
+  var nextId = 1;
+  if (masterSheet_lastRow >= 2) {
+    var ids = masterSheet.getRange(2, 1, masterSheet_lastRow - 1, 1).getValues()
+      .map(function(r) { return Number(r[0]) || 0; });
+    nextId = Math.max.apply(null, ids) + 1;
+  }
+
+  var migrated = 0;
+  var skipped  = 0;
+
+  rows.forEach(function(row) {
+    var category    = String(row[0 + offset] || '').trim();
+    var subcategory = String(row[1 + offset] || '').trim();
+    var required    = Number(row[2 + offset]) || 1;
+    var active      = String(row[3 + offset] || 'TRUE').toUpperCase();
+    var instructions= String(row[4 + offset] || '').trim();
+    var imageUrls   = String(row[5 + offset] || '').trim();
+
+    if (!category || !subcategory) return;
+    if (active === 'FALSE') { skipped++; return; }
+
+    var key = category + '|||' + subcategory;
+    if (existingInMaster[key]) { skipped++; return; } // deja există în master
+    if (seen[key]) return; // duplicat în sursă
+
+    seen[key] = true;
+    existingInMaster[key] = true;
+    masterSheet.appendRow([nextId, category, subcategory, required, instructions, imageUrls]);
+    nextId++;
+    migrated++;
+  });
+
+  log.push('✓ Migrat din Categories → Category_Master: ' + migrated + ' subcategorii unice (' + skipped + ' sărite)');
+}
+
+// -----------------------------------------------
+//  ENSURE PROJECT_CATEGORIES
+// -----------------------------------------------
+function ensureProjectCategories(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_PROJ_CATS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PROJ_CATS);
+    sheet.appendRow(['Project', 'Category ID', 'Required Photos Override', 'Active']);
+    styleHeader(sheet, 4);
+    sheet.setColumnWidth(1, 220);
+    sheet.setColumnWidth(2, 120);
+    sheet.setColumnWidth(3, 200);
+    sheet.setColumnWidth(4, 80);
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['TRUE', 'FALSE'], true).build();
+    sheet.getRange('D2:D5000').setDataValidation(rule);
+    sheet.setFrozenRows(1);
+
+    // Instrucțiuni în sheet — rândul 2 ca note vizibile
+    sheet.getRange('A2').setNote(
+      'Completează manual:\n' +
+      '- Coloana A: numele exact al proiectului (din sheet-ul Projects)\n' +
+      '- Coloana B: ID-ul categoriei (din sheet-ul Category_Master)\n' +
+      '- Coloana C: lasă gol pentru valoarea default, sau pune număr custom\n' +
+      '- Coloana D: TRUE / FALSE'
+    );
+
+    log.push('✓ Created: Project_Categories (completează manual alocările)');
+  } else {
+    log.push('→ Kept existing: Project_Categories (' + (sheet.getLastRow() - 1) + ' alocări)');
+  }
+}
+
+// -----------------------------------------------
+//  ENSURE SUBMISSIONS
+// -----------------------------------------------
+function ensureSubmissions(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_SUBMISSIONS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_SUBMISSIONS);
+    sheet.appendRow(['Site Number','Project','User Name','User Email','Date','Total Photos','N/A Items','Status','N/A Details']);
+    styleHeader(sheet, 9);
+    [120,200,160,200,180,120,90,100,400].forEach(function(w, i) { sheet.setColumnWidth(i+1, w); });
+    log.push('✓ Created: Submissions');
+  } else {
+    // Asigură că are coloana Project (v2 → v3 upgrade)
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headers[1] !== 'Project') {
+      sheet.insertColumnAfter(1);
+      sheet.getRange(1, 2).setValue('Project');
+      styleHeaderCell(sheet, 1, 2);
+      log.push('✓ Added Project column to Submissions');
+    } else {
+      log.push('→ Kept existing: Submissions (' + (sheet.getLastRow() - 1) + ' înregistrări)');
+    }
+  }
+}
+
+// -----------------------------------------------
+//  ENSURE NA_LOG
+// -----------------------------------------------
+function ensureNALog(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_NA_LOG);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NA_LOG);
+    sheet.appendRow(['Site Number','Project','Category','Subcategory','User Name','User Email','Date & Time','Status']);
+    styleHeader(sheet, 8);
+    log.push('✓ Created: NA_Log');
+  } else {
+    log.push('→ Kept existing: NA_Log (' + (sheet.getLastRow() - 1) + ' înregistrări)');
+  }
+}
+
+// -----------------------------------------------
+//  CLEANUP — șterge sheet-urile vechi/duplicate
+// -----------------------------------------------
+function cleanupOldSheets(ss, log) {
+  var toDelete = [
+    SHEET_OLD_CATEGORIES,   // vechiul Categories
+    'Categories_OLD',        // dacă există din setup anterior
+    'Sheet1', 'Sheet2', 'Sheet3', 'Foaie1', 'Foaie2', 'Foaie3'  // sheet-uri default goale
+  ];
+
+  toDelete.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    // Nu șterge dacă are date importante (mai mult de 1 rând = header + date)
+    if (name === SHEET_OLD_CATEGORIES || name === 'Categories_OLD') {
+      // Șterge întotdeauna vechiul Categories după migrare
+      ss.deleteSheet(sheet);
+      log.push('🗑 Deleted: ' + name + ' (migrat în Category_Master)');
+    } else {
+      // Șterge sheet-urile default goale
+      if (sheet.getLastRow() <= 1 && sheet.getLastColumn() <= 1) {
+        try { ss.deleteSheet(sheet); log.push('🗑 Deleted: ' + name + ' (gol)'); } catch(e) {}
+      }
+    }
+  });
+}
+
+// -----------------------------------------------
+//  ORDONEAZĂ SHEET-URILE în spreadsheet
+// -----------------------------------------------
+function orderSheets(ss) {
+  var order = [
+    SHEET_USERS,
+    SHEET_PROJECTS,
+    SHEET_CAT_MASTER,
+    SHEET_PROJ_CATS,
+    SHEET_SUBMISSIONS,
+    SHEET_NA_LOG
+  ];
+  order.forEach(function(name, idx) {
+    var sheet = ss.getSheetByName(name);
+    if (sheet) ss.setActiveSheet(sheet), ss.moveActiveSheet(idx + 1);
+  });
+}
+
+// -----------------------------------------------
+//  HELPERS DE FORMATARE
+// -----------------------------------------------
 function styleHeader(sheet, numCols) {
   var r = sheet.getRange(1, 1, 1, numCols);
-  r.setFontWeight('bold').setBackground('#0a1628').setFontColor('#29AAE1').setFontSize(11);
+  r.setFontWeight('bold')
+   .setBackground('#0a1628')
+   .setFontColor('#29AAE1')
+   .setFontSize(11)
+   .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
   sheet.setFrozenRows(1);
 }
 
 function styleHeaderCell(sheet, row, col) {
-  sheet.getRange(row, col).setFontWeight('bold').setBackground('#0a1628').setFontColor('#29AAE1').setFontSize(11);
+  sheet.getRange(row, col)
+    .setFontWeight('bold')
+    .setBackground('#0a1628')
+    .setFontColor('#29AAE1')
+    .setFontSize(11);
 }
 
 // -----------------------------------------------
 //  HTTP HANDLERS
 // -----------------------------------------------
-function doGet(e) { return handleRequest(e); }
+function doGet(e)  { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
 function jsonOut(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function handleRequest(e) {
@@ -177,15 +376,15 @@ function handleRequest(e) {
     Logger.log('action=' + data.action);
     var result;
     switch (data.action) {
-      case 'login':          result = actionLogin(data);          break;
-      case 'requestAccess':  result = actionRequestAccess(data);  break;
-      case 'getProjects':    result = actionGetProjects();         break;
-      case 'getCategories':  result = actionGetCategories(data);  break;
-      case 'uploadPhoto':    result = actionUploadPhoto(data);    break;
-      case 'submitProject':  result = actionSubmitProject(data);  break;
-      case 'logNA':          result = actionLogNA(data);          break;
-      case 'ping':           result = { ok: true };               break;
-      default:               result = { error: 'Unknown: ' + data.action };
+      case 'login':          result = actionLogin(data);         break;
+      case 'requestAccess':  result = actionRequestAccess(data); break;
+      case 'getProjects':    result = actionGetProjects();        break;
+      case 'getCategories':  result = actionGetCategories(data); break;
+      case 'uploadPhoto':    result = actionUploadPhoto(data);   break;
+      case 'submitProject':  result = actionSubmitProject(data); break;
+      case 'logNA':          result = actionLogNA(data);         break;
+      case 'ping':           result = { ok: true };              break;
+      default:               result = { error: 'Unknown action: ' + data.action };
     }
     return jsonOut(result);
   } catch(err) {
@@ -224,26 +423,29 @@ function actionRequestAccess(data) {
   if (!name || !email) return { success: false, message: 'Name and email required' };
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_USERS);
-  if (!sheet) { sheet = ss.insertSheet(SHEET_USERS); sheet.appendRow(['Name','Email','Status','Date Requested']); styleHeader(sheet, 4); }
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_USERS);
+    sheet.appendRow(['Name','Email','Status','Date Requested']);
+    styleHeader(sheet, 4);
+  }
   var last = sheet.getLastRow();
   if (last >= 2) {
     var rows = sheet.getRange(2, 1, last - 1, 3).getValues();
     for (var i = 0; i < rows.length; i++) {
       if ((rows[i][1] || '').toLowerCase().trim() === email) {
-        if ((rows[i][2] || '').toLowerCase() === 'approved') return { success: false, message: 'already_approved' };
+        if ((rows[i][2] || '').toLowerCase() === 'approved')
+          return { success: false, message: 'already_approved' };
         return { success: false, message: 'Request already exists.' };
       }
     }
   }
   sheet.appendRow([name, email, 'Pending', new Date().toISOString()]);
   SpreadsheetApp.flush();
-  Logger.log('New request: ' + name + ' <' + email + '>');
   return { success: true };
 }
 
 // -----------------------------------------------
 //  GET PROJECTS
-//  Returneaza lista proiectelor active
 // -----------------------------------------------
 function actionGetProjects() {
   var sheet = getSpreadsheet().getSheetByName(SHEET_PROJECTS);
@@ -264,39 +466,65 @@ function actionGetProjects() {
 }
 
 // -----------------------------------------------
-//  GET CATEGORIES (filtrat pe proiect)
+//  GET CATEGORIES
+//  JOIN: Category_Master + Project_Categories
 // -----------------------------------------------
 function actionGetCategories(data) {
   var projectName = (data.project || '').trim();
-  var sheet = getSpreadsheet().getSheetByName(SHEET_CATEGORIES);
-  if (!sheet) return { categories: [] };
-  var last = sheet.getLastRow();
-  if (last < 2) return { categories: [] };
-  var totalCols = Math.max(sheet.getLastColumn(), 7);
-  var rows = sheet.getRange(2, 1, last - 1, totalCols).getValues();
-  var cats = [];
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    if (!row[0] || !row[1] || !row[2]) continue;
-    if (String(row[4]).toUpperCase() === 'FALSE') continue;
-    // Filtreaza pe proiect daca e specificat
-    if (projectName && String(row[0]).trim() !== projectName) continue;
-    cats.push({
-      project:      String(row[0]).trim(),
-      category:     String(row[1]).trim(),
-      subcategory:  String(row[2]).trim(),
-      required:     Number(row[3]) || 1,
-      active:       true,
-      instructions: totalCols > 5 ? String(row[5] || '').trim() : '',
-      imageUrls:    totalCols > 6 ? String(row[6] || '').trim() : ''
+  var ss = getSpreadsheet();
+
+  // Citește Category_Master → map ID → detalii
+  var cm = ss.getSheetByName(SHEET_CAT_MASTER);
+  if (!cm) return { categories: [] };
+  var cmLast = cm.getLastRow();
+  if (cmLast < 2) return { categories: [] };
+  var cmRows = cm.getRange(2, 1, cmLast - 1, 6).getValues();
+  var masterMap = {};
+  cmRows.forEach(function(r) {
+    if (!r[0]) return;
+    masterMap[String(r[0]).trim()] = {
+      category:     String(r[1] || '').trim(),
+      subcategory:  String(r[2] || '').trim(),
+      required:     Number(r[3]) || 1,
+      instructions: String(r[4] || '').trim(),
+      imageUrls:    String(r[5] || '').trim()
+    };
+  });
+
+  // Citește Project_Categories → filtrează pe proiect
+  var pc = ss.getSheetByName(SHEET_PROJ_CATS);
+  if (!pc) return { categories: [] };
+  var pcLast = pc.getLastRow();
+  if (pcLast < 2) return { categories: [] };
+  var pcRows = pc.getRange(2, 1, pcLast - 1, 4).getValues();
+
+  var categories = [];
+  pcRows.forEach(function(r) {
+    var rowProject  = String(r[0] || '').trim();
+    var catId       = String(r[1] || '').trim();
+    var reqOverride = r[2] !== '' && r[2] !== null ? Number(r[2]) : null;
+    var active      = String(r[3] || 'TRUE').toUpperCase();
+
+    if (projectName && rowProject !== projectName) return;
+    if (active === 'FALSE') return;
+    if (!catId || !masterMap[catId]) return;
+
+    var m = masterMap[catId];
+    categories.push({
+      project:      rowProject,
+      category:     m.category,
+      subcategory:  m.subcategory,
+      required:     reqOverride !== null ? reqOverride : m.required,
+      instructions: m.instructions,
+      imageUrls:    m.imageUrls
     });
-  }
-  return { categories: cats };
+  });
+
+  return { categories: categories };
 }
 
 // -----------------------------------------------
 //  UPLOAD PHOTO
-//  Folder: Root / Site_XXXXX / Project / Category / Subcategory
 // -----------------------------------------------
 function actionUploadPhoto(data) {
   var siteNumber  = (data.siteNumber  || '').trim();
@@ -348,7 +576,7 @@ function actionLogNA(data) {
 function actionSubmitProject(data) {
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_SUBMISSIONS);
-  if (!sheet) return { success: false, message: 'Submissions sheet not found' };
+  if (!sheet) return { success: false };
 
   var naDetails    = data.naDetails || [];
   var naDetailsStr = naDetails.length
@@ -357,31 +585,34 @@ function actionSubmitProject(data) {
 
   sheet.appendRow([
     'Site_' + (data.siteNumber || ''),
-    data.project     || '',
-    data.userName    || '',
-    data.userEmail   || '',
-    data.date        || new Date().toISOString(),
+    data.project   || '',
+    data.userName  || '',
+    data.userEmail || '',
+    data.date      || new Date().toISOString(),
     Number(data.totalPhotos) || 0,
     Number(data.totalNA)     || 0,
     'Completed',
     naDetailsStr
   ]);
 
-  // Flush NA logs lipsа (offline scenario)
   if (naDetails.length) {
     var naSheet = ss.getSheetByName(SHEET_NA_LOG);
     if (naSheet) {
-      var lastRow = naSheet.getLastRow();
       var existSet = {};
+      var lastRow = naSheet.getLastRow();
       if (lastRow >= 2) {
         naSheet.getRange(2, 1, lastRow - 1, 4).getValues()
-          .forEach(function(r){ existSet[r[0]+'|'+r[1]+'|'+r[2]+'|'+r[3]] = true; });
+          .forEach(function(r) { existSet[r[0]+'|'+r[1]+'|'+r[2]+'|'+r[3]] = true; });
       }
       naDetails.forEach(function(n) {
         var k = 'Site_'+(data.siteNumber||'')+'|'+(data.project||'')+'|'+n.category+'|'+n.subcategory;
         if (!existSet[k]) {
-          naSheet.appendRow(['Site_'+(data.siteNumber||''), data.project||'', n.category, n.subcategory,
-            data.userName||'', data.userEmail||'', data.date||new Date().toISOString(), 'N/A']);
+          naSheet.appendRow([
+            'Site_'+(data.siteNumber||''), data.project||'',
+            n.category, n.subcategory,
+            data.userName||'', data.userEmail||'',
+            data.date||new Date().toISOString(), 'N/A'
+          ]);
         }
       });
     }
@@ -393,6 +624,10 @@ function actionSubmitProject(data) {
 // -----------------------------------------------
 //  HELPER
 // -----------------------------------------------
+function getSpreadsheet() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
 function getOrCreateFolder(parent, name) {
   var f = parent.getFoldersByName(name);
   if (f.hasNext()) return f.next();
