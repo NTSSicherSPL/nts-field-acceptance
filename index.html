@@ -1528,8 +1528,8 @@ const CONFIG = {
   IDB_VERSION: 1,
   PHOTO_STORE: 'pending_photos',
   STATE_STORE: 'app_state',
-  MAX_PHOTO_BYTES: 1.5 * 1024 * 1024,
-  PHOTO_MAX_PX: 1800,
+  MAX_PHOTO_BYTES: 2 * 1024 * 1024,
+  PHOTO_MAX_PX: 2560,
   UPLOAD_CONCURRENCY: 3,
 };
 
@@ -2237,7 +2237,8 @@ function renderStepper() {
   });
 }
 
-function showCatPage(idx) {
+function showCatPage(idx, shouldScroll) {
+  if (shouldScroll === undefined) shouldScroll = true;
   _currentCatIndex = idx;
   const pages  = document.querySelectorAll('.cat-page');
   const groups = getCategoryGroups();
@@ -2285,8 +2286,7 @@ function showCatPage(idx) {
     nextBtn.onclick   = catNavNext;
   }
 
-  // Scroll to top of content
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (shouldScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function catNavNext() {
@@ -2507,7 +2507,7 @@ document.getElementById('camera-input').addEventListener('change', async functio
 });
 
 async function processAndQueuePhoto(file, key, cat, sub) {
-  const compressed = await compressImageFast(file, CONFIG.PHOTO_MAX_PX, 0.82, CONFIG.MAX_PHOTO_BYTES);
+  const compressed = await compressImageFast(file, CONFIG.PHOTO_MAX_PX, 0.94, CONFIG.MAX_PHOTO_BYTES);
   const idx = (APP.photos[key] || []).length + 1;
   const name = formatPhotoName(APP.siteNumber, cat, sub, idx);
   const thumbUrl = await createThumbnail(compressed, 400);
@@ -2588,7 +2588,7 @@ function compressImageFast(file, maxPx, quality, maxBytes) {
 
       let bestBlob = null;
       let currentQuality = quality;
-      for (let attempt = 0; attempt < 14; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
@@ -2600,11 +2600,15 @@ function compressImageFast(file, maxPx, quality, maxBytes) {
           return;
         }
 
-        if (currentQuality > 0.58) currentQuality -= 0.08;
+        if (currentQuality > 0.82) currentQuality -= 0.04;
         else {
-          width = Math.max(640, Math.round(width * 0.85));
-          height = Math.max(640, Math.round(height * 0.85));
-          currentQuality = 0.68;
+          if (Math.max(width, height) > 1400) {
+            width = Math.round(width * 0.9);
+            height = Math.round(height * 0.9);
+            currentQuality = 0.88;
+          } else {
+            currentQuality = Math.max(0.74, currentQuality - 0.04);
+          }
         }
       }
 
@@ -3100,7 +3104,7 @@ function updateOverallProgress() {
 function updateSubmitButton() {
   // Refresh current page nav buttons (handles submit state on last page)
   const catNames = getCatNames();
-  if (catNames.length > 0) showCatPage(_currentCatIndex);
+  if (catNames.length > 0) showCatPage(_currentCatIndex, false);
 }
 
 // ════════════════════════════════════════════════════
