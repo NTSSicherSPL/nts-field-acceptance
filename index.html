@@ -1647,86 +1647,86 @@ function formatPhotoName(siteNumber, cat, sub, idx) {
 // ════════════════════════════════════════════════════
 //  ONLINE / OFFLINE
 // ════════════════════════════════════════════════════
-window.addEventListener('online', async function() {
-  APP.isOnline = true;
-  document.getElementById('offline-banner').classList.remove('show');
-  toast('Conexiune restaurată - se reia uploadul...', 'success', 3000);
-  // Resetează starea de upload și restaurează blob-urile pierdute
+window.addEventListener('online', async () => {
+  APP.isOnline    = true;
   APP.isUploading = false;
+  document.getElementById('offline-banner').classList.remove('show');
+  toast('Connection restored - resuming upload...', 'success', 3000);
   await restorePendingBlobs();
-  setTimeout(function() { processUploadQueue(); }, 2000);
+  setTimeout(() => processUploadQueue(), 1500);
 });
 
-window.addEventListener('offline', function() {
-  APP.isOnline = false;
+window.addEventListener('offline', () => {
+  APP.isOnline    = false;
   APP.isUploading = false;
   document.getElementById('offline-banner').classList.add('show');
-  toast('Fără conexiune - pozele sunt salvate local.', 'warning', 5000);
+  toast('Offline - Upload paused. Photos saved locally.', 'warning', 5000);
 });
 
 async function restorePendingBlobs() {
   if (!APP.db) return;
   try {
-    // Citește toate blob-urile salvate în IndexedDB
-    const allStored = await dbGetAll(CONFIG.PHOTO_STORE);
+    const stored = await dbGetAll(CONFIG.PHOTO_STORE);
     const blobMap = {};
-    allStored.forEach(function(item) { blobMap[item.id] = item; });
-
-    // Restaurează blob-urile lipsă și resetează stările blocate
-    Object.values(APP.photos).forEach(function(photoArr) {
-      photoArr.forEach(function(photo) {
-        // Orice foto blocată în 'uploading' → 'queued'
-        if (photo.status === 'uploading') photo.status = 'queued';
-        // Restaurează blob dacă e null dar există în IndexedDB
-        if (!photo.blob && blobMap[photo.id]) {
-          photo.blob    = blobMap[photo.id].blob;
-          photo.thumbUrl = blobMap[photo.id].thumbUrl || photo.thumbUrl;
+    stored.forEach(p => { blobMap[p.id] = p; });
+    for (const photos of Object.values(APP.photos)) {
+      photos.forEach(p => {
+        if (p.status === 'uploading') p.status = 'queued';
+        if (p.status !== 'done' && !p.blob && blobMap[p.id]) {
+          p.blob     = blobMap[p.id].blob;
+          p.thumbUrl = blobMap[p.id].thumbUrl || p.thumbUrl;
         }
       });
-    });
-
-    // Reconstruiește queue cu toate pozele neîncărcate
-    const inQueue = new Set(APP.uploadQueue.map(function(q) { return q.photoId; }));
-    Object.entries(APP.photos).forEach(function(entry) {
-      const key    = entry[0];
-      const photos = entry[1];
-      const parts  = key.split('|||');
-      const cat    = parts[0];
-      const sub    = parts[1];
-      photos.forEach(function(photo) {
-        if (photo.status === 'queued' && photo.blob && !inQueue.has(photo.id)) {
-          APP.uploadQueue.push({ key: key, cat: cat, sub: sub, photoId: photo.id });
-          inQueue.add(photo.id);
+    }
+    const inQ = new Set(APP.uploadQueue.map(q => q.photoId));
+    for (const [key, photos] of Object.entries(APP.photos)) {
+      const [cat, sub] = key.split('|||');
+      photos.forEach(p => {
+        if (p.status === 'queued' && p.blob && !inQ.has(p.id)) {
+          APP.uploadQueue.push({ key, cat, sub, photoId: p.id });
+          inQ.add(p.id);
         }
       });
-    });
-
+    }
     updateQueueBar();
-    console.log('[RESTORE] Blob-uri restaurate. Queue:', APP.uploadQueue.length);
-  } catch(ex) {
-    console.warn('[RESTORE] Eroare:', ex);
-  }
+  } catch(e) { console.warn('[RESTORE]', e); }
 }
-
-
-
-
 
 // ════════════════════════════════════════════════════
 //  GAS API CALLS
 // ════════════════════════════════════════════════════
-async function gasCall(action, data) {
-  const payload = Object.assign({ action: action }, data || {});
+async function gasCall(action, data = {}) {
+  const payload = { action, ...data };
+  // All actions use GET ?payload= — works cross-origin without CORS issues
+  // For uploadPhoto: base64 is compressed to ~300KB which fits in URL
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
-  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-  const text = await resp.text();
-  if (text.trim().startsWith('<')) {
-    throw new Error('GAS redirect - verifică că deployment-ul e public (Anyone)');
+  try {
+    const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const text = await resp.text();
+    if (text.trim().startsWith('<')) {
+      // Got HTML redirect (GAS login page) - try POST fallback
+      return await gasCallPost(payload);
+    }
+    return JSON.parse(text);
+  } catch(e) {
+    return await gasCallPost(payload);
   }
-  return JSON.parse(text);
 }
 
-
+async function gasCallPost(payload) {
+  // POST fallback with no-cors for upload
+  if (payload.action === 'uploadPhoto') {
+    await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    });
+    // no-cors = opaque response, assume success
+    return { success: true, optimistic: true };
+  }
+  throw new Error('POST fallback not available for: ' + payload.action);
+}
 
 
 // ════════════════════════════════════════════════════
@@ -2572,10 +2572,9 @@ async function processUploadQueue() {
   updateQueueBar();
 
   while (APP.uploadQueue.length > 0 && APP.isOnline) {
-    const item   = APP.uploadQueue[0];
+    const item = APP.uploadQueue[0];
     const photos = APP.photos[item.key] || [];
     const photo  = photos.find(p => p.id === item.photoId);
-
     if (!photo || photo.status === 'done') {
       APP.uploadQueue.shift();
       continue;
@@ -2586,31 +2585,16 @@ async function processUploadQueue() {
     updateQueueBar();
 
     try {
-      // Blob poate fi null dacă pagina s-a reîncărcat - restaurează din IndexedDB
-      if (!photo.blob) {
+      // Compress to 1500px for upload (reduces base64 from ~5MB to ~300KB)
+      const uploadBlob = photo.blob ? await compressImage(photo.blob, 1500, 0.80) : null;
+      if (!uploadBlob) {
+        // Blob lost - try to restore from IndexedDB
         const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
-        if (stored && stored.blob) {
-          photo.blob = stored.blob;
-        } else {
-          // Blob irecuperabil - skip
-          APP.uploadQueue.shift();
-          photo.status = 'error';
-          continue;
-        }
+        if (!stored) { APP.uploadQueue.shift(); continue; }
+        photo.blob = stored.blob;
       }
-
-      // Încearcă mai întâi cu calitate originală (max 4096px)
-      let b64 = await blobToBase64(photo.blob);
-      console.log('[UPLOAD] ' + photo.name + ' original=' + Math.round(b64.length/1024) + 'KB');
-
-      // Dacă e prea mare pentru URL GET (>1.5MB base64 ~= >1MB imagine)
-      // comprimă DOAR pentru transport, păstrând originalul în IndexedDB
-      if (b64.length > 1536 * 1024) {
-        console.log('[UPLOAD] Prea mare, comprim pentru transport...');
-        const compressed = await compressImage(photo.blob, 2048, 0.90);
-        b64 = await blobToBase64(compressed);
-        console.log('[UPLOAD] Comprimat=' + Math.round(b64.length/1024) + 'KB');
-      }
+      const b64 = await blobToBase64(uploadBlob || photo.blob);
+      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB');
 
       const res = await gasCall('uploadPhoto', {
         siteNumber:  APP.siteNumber,
@@ -2632,16 +2616,17 @@ async function processUploadQueue() {
         APP.uploadQueue.shift();
         toast('Uploaded: ' + photo.name, 'success', 2000);
       } else {
-        throw new Error(res ? (res.error || 'Upload failed') : 'No response');
+        photo.status = 'error';
+        APP.uploadQueue.shift();
+        APP.uploadQueue.push(item);
+        await sleep(5000);
       }
-
     } catch(e) {
-      console.error('[UPLOAD] Error:', e.message);
+      console.error('[UPLOAD]', e.message);
       photo.status = 'error';
-      // Re-coadă pentru retry - nu bloca tot queue-ul
       APP.uploadQueue.shift();
-      APP.uploadQueue.push(item);
-      await sleep(10000); // așteaptă 10s înainte de retry
+      APP.uploadQueue.push(item); // retry later, don't stop queue
+      await sleep(5000);
     }
 
     refreshSubCard(item.key);
@@ -2655,10 +2640,6 @@ async function processUploadQueue() {
   updateQueueBar();
   updateSubmitButton();
 }
-
-
-
-
 
 function blobToBase64(blob) {
   return new Promise((res, rej) => {
