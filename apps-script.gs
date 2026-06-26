@@ -728,12 +728,11 @@ function actionUploadPhoto(data) {
   var siteFol = getOrCreateFolder(root, 'Site_' + siteNumber);
   var projFol = project ? getOrCreateFolder(siteFol, project) : siteFol;
   var catFol  = getOrCreateFolder(projFol, category);
-  var subFol  = getOrCreateFolder(catFol, subcategory);
 
-  fileName = getNextAvailablePhotoName(subFol, fileName);
+  fileName = getNextAvailablePhotoName(catFol, fileName);
 
   var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
-  var file = subFol.createFile(blob);
+  var file = catFol.createFile(blob);
   touchActiveSite(siteNumber, project);
   return { success: true, fileId: file.getId(), fileName: fileName };
 }
@@ -777,6 +776,7 @@ function actionGetSiteState(data) {
   }
 
   var photos = [];
+  var subSlugMap = buildSubcategorySlugMap(ss, project);
   try {
     var root = DriveApp.getFolderById(DRIVE_FOLDER_ID);
     var siteFolders = root.getFoldersByName('Site_' + siteNumber);
@@ -788,6 +788,28 @@ function actionGetSiteState(data) {
         var catFolders = projFol.getFolders();
         while (catFolders.hasNext()) {
           var catFol = catFolders.next();
+          var catName = catFol.getName();
+          var directFiles = catFol.getFiles();
+          while (directFiles.hasNext()) {
+            var directFile = directFiles.next();
+            var directSub = inferSubcategoryFromPhotoName(
+              directFile.getName(),
+              siteNumber,
+              catName,
+              subSlugMap[catName] || {}
+            );
+            if (directSub) {
+              photos.push({
+                category: catName,
+                subcategory: directSub,
+                key: catName + '|||' + directSub,
+                name: directFile.getName(),
+                fileId: directFile.getId(),
+                thumbUrl: 'https://drive.google.com/thumbnail?id=' + directFile.getId() + '&sz=w400'
+              });
+            }
+          }
+
           var subFolders = catFol.getFolders();
           while (subFolders.hasNext()) {
             var subFol = subFolders.next();
@@ -795,9 +817,9 @@ function actionGetSiteState(data) {
             while (files.hasNext()) {
               var file = files.next();
               photos.push({
-                category: catFol.getName(),
+                category: catName,
                 subcategory: subFol.getName(),
-                key: catFol.getName() + '|||' + subFol.getName(),
+                key: catName + '|||' + subFol.getName(),
                 name: file.getName(),
                 fileId: file.getId(),
                 thumbUrl: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w400'
@@ -829,6 +851,53 @@ function actionGetSiteState(data) {
   }
 
   return { photos: photos, naStatus: naStatus };
+}
+
+function buildSubcategorySlugMap(ss, projectName) {
+  var result = {};
+  var cm = ss.getSheetByName(SHEET_CAT_MASTER);
+  var pc = ss.getSheetByName(SHEET_PROJ_CATS);
+  if (!cm || !pc || cm.getLastRow() < 2 || pc.getLastRow() < 2) return result;
+
+  var masterMap = {};
+  cm.getRange(2, 1, cm.getLastRow() - 1, 3).getValues().forEach(function(r) {
+    if (!r[0]) return;
+    masterMap[String(r[0]).trim()] = {
+      category: String(r[1] || '').trim(),
+      subcategory: String(r[2] || '').trim()
+    };
+  });
+
+  pc.getRange(2, 1, pc.getLastRow() - 1, 4).getValues().forEach(function(r) {
+    var rowProject = String(r[0] || '').trim();
+    var catId = String(r[1] || '').trim();
+    var active = String(r[3] || 'TRUE').toUpperCase();
+    if (rowProject !== projectName || active === 'FALSE' || !masterMap[catId]) return;
+    var category = masterMap[catId].category;
+    var subcategory = masterMap[catId].subcategory;
+    if (!result[category]) result[category] = {};
+    result[category][slugForPhotoName(subcategory)] = subcategory;
+  });
+  return result;
+}
+
+function inferSubcategoryFromPhotoName(fileName, siteNumber, category, slugMap) {
+  var dot = fileName.lastIndexOf('.');
+  var base = dot >= 0 ? fileName.substring(0, dot) : fileName;
+  base = base.replace(/_\d{3}$/, '');
+
+  var prefix = slugForPhotoName(siteNumber) + '_' + slugForPhotoName(category) + '_';
+  if (base.indexOf(prefix) !== 0) return '';
+
+  var subSlug = base.substring(prefix.length);
+  return slugMap[subSlug] || subSlug.replace(/_/g, ' ');
+}
+
+function slugForPhotoName(str) {
+  return String(str || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 // -----------------------------------------------

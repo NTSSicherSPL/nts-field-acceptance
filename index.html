@@ -2195,7 +2195,7 @@ function renderCategories() {
   });
 
   renderStepper();
-  showCatPage(_currentCatIndex);
+  showCatPage(_currentCatIndex, false);
   updateSubmitButton();
 }
 
@@ -2231,14 +2231,14 @@ function renderStepper() {
     dot.className = 'cat-step-dot ' + dotClass;
     dot.title = cat;
     dot.textContent = allDone ? '✓' : (idx + 1);
-    dot.onclick = () => { _currentCatIndex = idx; showCatPage(idx); };
+    dot.onclick = () => { _currentCatIndex = idx; showCatPage(idx, true); };
     step.appendChild(dot);
     stepper.appendChild(step);
   });
 }
 
 function showCatPage(idx, shouldScroll) {
-  if (shouldScroll === undefined) shouldScroll = true;
+  if (shouldScroll === undefined) shouldScroll = false;
   _currentCatIndex = idx;
   const pages  = document.querySelectorAll('.cat-page');
   const groups = getCategoryGroups();
@@ -2251,7 +2251,7 @@ function showCatPage(idx, shouldScroll) {
 
   // Scroll stepper to active dot
   const dots = document.querySelectorAll('.cat-step-dot');
-  if (dots[idx]) dots[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  if (shouldScroll && dots[idx]) dots[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
   // Update nav buttons
   const prevBtn = document.getElementById('btn-prev');
@@ -2292,13 +2292,13 @@ function showCatPage(idx, shouldScroll) {
 function catNavNext() {
   const catNames = getCatNames();
   if (_currentCatIndex < catNames.length - 1) {
-    showCatPage(_currentCatIndex + 1);
+    showCatPage(_currentCatIndex + 1, true);
   }
 }
 
 function catNavPrev() {
   if (_currentCatIndex > 0) {
-    showCatPage(_currentCatIndex - 1);
+    showCatPage(_currentCatIndex - 1, true);
   }
 }
 
@@ -3082,7 +3082,7 @@ function updateCategoryBadge(cat) {
 
   // Refresh stepper + nav buttons
   renderStepper();
-  showCatPage(_currentCatIndex);
+  showCatPage(_currentCatIndex, false);
 }
 
 function updateOverallProgress() {
