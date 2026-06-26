@@ -733,6 +733,12 @@ function actionUploadPhoto(data) {
 
   var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
   var file = catFol.createFile(blob);
+  file.setDescription(JSON.stringify({
+    siteNumber: siteNumber,
+    project: project,
+    category: category,
+    subcategory: subcategory
+  }));
   touchActiveSite(siteNumber, project);
   return { success: true, fileId: file.getId(), fileName: fileName };
 }
@@ -792,7 +798,8 @@ function actionGetSiteState(data) {
           var directFiles = catFol.getFiles();
           while (directFiles.hasNext()) {
             var directFile = directFiles.next();
-            var directSub = inferSubcategoryFromPhotoName(
+            var directMeta = getPhotoMetaFromDescription(directFile);
+            var directSub = directMeta.subcategory || inferSubcategoryFromPhotoName(
               directFile.getName(),
               siteNumber,
               catName,
@@ -800,9 +807,9 @@ function actionGetSiteState(data) {
             );
             if (directSub) {
               photos.push({
-                category: catName,
+                category: directMeta.category || catName,
                 subcategory: directSub,
-                key: catName + '|||' + directSub,
+                key: (directMeta.category || catName) + '|||' + directSub,
                 name: directFile.getName(),
                 fileId: directFile.getId(),
                 thumbUrl: 'https://drive.google.com/thumbnail?id=' + directFile.getId() + '&sz=w400'
@@ -851,6 +858,20 @@ function actionGetSiteState(data) {
   }
 
   return { photos: photos, naStatus: naStatus };
+}
+
+function getPhotoMetaFromDescription(file) {
+  try {
+    var desc = file.getDescription();
+    if (!desc) return {};
+    var meta = JSON.parse(desc);
+    return {
+      category: String(meta.category || '').trim(),
+      subcategory: String(meta.subcategory || '').trim()
+    };
+  } catch(e) {
+    return {};
+  }
 }
 
 function buildSubcategorySlugMap(ss, projectName) {
