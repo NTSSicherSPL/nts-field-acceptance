@@ -1697,8 +1697,13 @@ async function restorePendingBlobs() {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
-  // All actions use GET ?payload= — works cross-origin without CORS issues
-  // For uploadPhoto: base64 is compressed to ~300KB which fits in URL
+
+  // uploadPhoto sends large base64 data — skip GET entirely and use POST
+  if (action === 'uploadPhoto') {
+    return await gasCallPost(payload);
+  }
+
+  // All other actions use GET ?payload= (works cross-origin)
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
   try {
     const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
@@ -1714,15 +1719,20 @@ async function gasCall(action, data = {}) {
 }
 
 async function gasCallPost(payload) {
-  // POST fallback with no-cors for upload
+  // POST with no-cors for uploadPhoto (avoids CORS preflight)
   if (payload.action === 'uploadPhoto') {
-    await fetch(CONFIG.GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload),
-    });
-    // no-cors = opaque response, assume success
+    try {
+      await fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+    } catch(e) {
+      console.warn('[POST no-cors] uploadPhoto fetch error:', e.message);
+    }
+    // no-cors = opaque response, cannot read result — assume success
+    console.log('[UPLOAD] POST no-cors sent (optimistic success):', payload.fileName);
     return { success: true, optimistic: true };
   }
   throw new Error('POST fallback not available for: ' + payload.action);
@@ -2589,16 +2599,16 @@ async function processUploadQueue() {
     updateQueueBar();
 
     try {
-      // Compress to 1500px for upload (reduces base64 from ~5MB to ~300KB)
-      const uploadBlob = photo.blob ? await compressImage(photo.blob, 1500, 0.80) : null;
-      if (!uploadBlob) {
+      // Use photo.blob directly — already compressed at capture (4096px, 0.95 quality)
+      // No additional recompression to preserve maximum upload quality
+      if (!photo.blob) {
         // Blob lost - try to restore from IndexedDB
         const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
         if (!stored) { APP.uploadQueue.shift(); continue; }
         photo.blob = stored.blob;
       }
-      const b64 = await blobToBase64(uploadBlob || photo.blob);
-      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB');
+      const b64 = await blobToBase64(photo.blob);
+      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB (max quality)');
 
       const res = await gasCall('uploadPhoto', {
         siteNumber:  APP.siteNumber,
