@@ -1528,6 +1528,9 @@ const CONFIG = {
   IDB_VERSION: 1,
   PHOTO_STORE: 'pending_photos',
   STATE_STORE: 'app_state',
+  MAX_PHOTO_BYTES: 1.5 * 1024 * 1024,
+  PHOTO_MAX_PX: 1800,
+  UPLOAD_CONCURRENCY: 3,
 };
 
 // ════════════════════════════════════════════════════
@@ -1680,7 +1683,10 @@ function openImgViewer(src) {
 }
 
 function slugify(str) {
-  return str.replace(/[^a-zA-Z0-9]/g, '').replace(/\s+/g, '');
+  return String(str || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function photoKey(cat, sub) { return `${cat}|||${sub}`; }
@@ -1691,8 +1697,7 @@ function formatPhotoName(siteNumber, cat, sub, idx) {
   const c = slugify(cat);
   const sb = slugify(sub);
   const n = String(idx).padStart(3, '0');
-  const u = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  return `${s}_${c}_${sb}_${n}_${u}.jpg`;
+  return `${s}_${c}_${sb}_${n}.jpg`;
 }
 
 // ════════════════════════════════════════════════════
@@ -2502,9 +2507,7 @@ document.getElementById('camera-input').addEventListener('change', async functio
 });
 
 async function processAndQueuePhoto(file, key, cat, sub) {
-  // Max resolution: 4096px (modern phones go up to 4000+px)
-  // Quality: 0.95 JPEG (near-lossless for field documentation)
-  const compressed = await compressImage(file, 4096, 0.95);
+  const compressed = await compressImageFast(file, CONFIG.PHOTO_MAX_PX, 0.82, CONFIG.MAX_PHOTO_BYTES);
   const idx = (APP.photos[key] || []).length + 1;
   const name = formatPhotoName(APP.siteNumber, cat, sub, idx);
   const thumbUrl = await createThumbnail(compressed, 400);
@@ -2549,6 +2552,69 @@ function createThumbnail(blob, maxThumbPx) {
       res(c.toDataURL('image/jpeg', 0.75)); // thumb: smaller file, lower quality OK
     };
     img.onerror = () => { URL.revokeObjectURL(url); res(''); };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, quality) {
+  return new Promise(resolve => {
+    canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+  });
+}
+
+function compressImageFast(file, maxPx, quality, maxBytes) {
+  return new Promise((resolve) => {
+    const isJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg';
+    if (isJpeg && file.size <= maxBytes) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round((height / width) * maxPx); width = maxPx; }
+        else                { width  = Math.round((width / height) * maxPx); height = maxPx; }
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      let bestBlob = null;
+      let currentQuality = quality;
+      for (let attempt = 0; attempt < 14; attempt++) {
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const blob = await canvasToBlob(canvas, currentQuality);
+        if (blob) bestBlob = blob;
+        if (blob && blob.size <= maxBytes) {
+          resolve(blob);
+          return;
+        }
+
+        if (currentQuality > 0.58) currentQuality -= 0.08;
+        else {
+          width = Math.max(640, Math.round(width * 0.85));
+          height = Math.max(640, Math.round(height * 0.85));
+          currentQuality = 0.68;
+        }
+      }
+
+      resolve(bestBlob || file);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
     img.src = url;
   });
 }
@@ -2867,6 +2933,79 @@ async function processUploadQueue() {
   APP.isUploading = false;
   updateQueueBar();
   updateSubmitButton();
+}
+
+async function processUploadQueue() {
+  if (APP.isUploading || !APP.isOnline) return;
+  APP.isUploading = true;
+  updateQueueBar();
+
+  while (APP.uploadQueue.length > 0 && APP.isOnline) {
+    const batch = APP.uploadQueue.splice(0, CONFIG.UPLOAD_CONCURRENCY);
+    const results = await Promise.all(batch.map(uploadQueueItem));
+    results.forEach(result => {
+      if (result && result.retry && APP.isOnline) APP.uploadQueue.push(result.item);
+    });
+    await saveState();
+    updateQueueBar();
+    updateOverallProgress();
+    if (results.some(r => r && r.retry)) await sleep(1500);
+  }
+
+  APP.isUploading = false;
+  updateQueueBar();
+  updateSubmitButton();
+}
+
+async function uploadQueueItem(item) {
+  const photos = APP.photos[item.key] || [];
+  const photo  = photos.find(p => p.id === item.photoId);
+  if (!photo || photo.status === 'done') return { retry: false, item };
+
+  photo.status = 'uploading';
+  refreshSubCard(item.key);
+  updateQueueBar();
+
+  try {
+    if (!photo.blob) {
+      const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
+      if (!stored) return { retry: false, item };
+      photo.blob = stored.blob;
+    }
+
+    const b64 = await blobToBase64(photo.blob);
+    console.log('[UPLOAD] ' + photo.name + ' size=' + Math.round(photo.blob.size / 1024) + 'KB b64=' + Math.round(b64.length / 1024) + 'KB');
+
+    const res = await gasCall('uploadPhoto', {
+      siteNumber:  APP.siteNumber,
+      project:     APP.project || '',
+      category:    item.cat,
+      subcategory: item.sub,
+      fileName:    photo.name,
+      base64Data:  b64,
+      mimeType:    'image/jpeg',
+      userName:    APP.user ? APP.user.name  : '',
+      userEmail:   APP.user ? APP.user.email : '',
+    });
+
+    if (res && res.success) {
+      photo.status  = 'done';
+      photo.driveId = res.fileId || '';
+      photo.blob    = null;
+      await dbDelete(CONFIG.PHOTO_STORE, photo.id);
+      refreshSubCard(item.key);
+      updateCategoryBadge(item.cat);
+      toast('Uploaded: ' + photo.name, 'success', 1600);
+      return { retry: false, item };
+    }
+  } catch(e) {
+    console.error('[UPLOAD]', e.message);
+  }
+
+  photo.status = 'error';
+  refreshSubCard(item.key);
+  updateCategoryBadge(item.cat);
+  return { retry: true, item };
 }
 
 function blobToBase64(blob) {
