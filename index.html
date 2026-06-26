@@ -502,6 +502,54 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       margin-top: 2px;
     }
+    .open-sites-wrap {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .open-sites-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .open-site-card {
+      background: rgba(41,170,225,0.06);
+      border: 1px solid rgba(41,170,225,0.35);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .open-site-main { min-width: 0; }
+    .open-site-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .open-site-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .open-site-action {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--brand);
+      flex-shrink: 0;
+    }
     /* ── CATEGORY PAGE NAV ── */
     .app-content {
       padding: 0; display: flex;
@@ -1297,7 +1345,7 @@
           <div class="setup-badge">1</div>
           <div>
             <h3>Site Number</h3>
-            <p>Enter the site number for this job</p>
+            <p>Enter a site number for a new job, or continue to open jobs</p>
           </div>
         </div>
         <div class="setup-body">
@@ -1337,6 +1385,7 @@
               Loading projects...
             </div>
           </div>
+          <div id="open-sites-wrap" class="open-sites-wrap" style="display:none;"></div>
           <div style="display:flex;gap:10px;margin-top:14px;">
             <button class="btn btn-ghost" style="flex-shrink:0;padding:12px 16px;" onclick="backToStep1()">
               ← Back
@@ -1489,6 +1538,7 @@ let APP = {
   siteNumber: null,
   project: null,
   projects: [],
+  openSites: [],
   categories: [],
   photos: {},
   naStatus: {},
@@ -1641,7 +1691,8 @@ function formatPhotoName(siteNumber, cat, sub, idx) {
   const c = slugify(cat);
   const sb = slugify(sub);
   const n = String(idx).padStart(3, '0');
-  return `${s}_${c}_${sb}_${n}.jpg`;
+  const u = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return `${s}_${c}_${sb}_${n}_${u}.jpg`;
 }
 
 // ════════════════════════════════════════════════════
@@ -1903,15 +1954,143 @@ async function initApp() {
   if (APP.user) {
     document.getElementById('header-user-info').textContent = `Logged in as: ${APP.user.name}`;
   }
-  if(APP.siteNumber&&APP.project){if(typeof _selectedProject!=='undefined')_selectedProject=APP.project;showMainContent();await loadCategories();renderCategories();updateOverallProgress();processUploadQueue();}else{document.getElementById('site-setup-screen').style.display='flex';var _s1x=document.getElementById('setup-step-1');if(_s1x)_s1x.style.display='';var _s2x=document.getElementById('setup-step-2');if(_s2x)_s2x.style.display='none';document.getElementById('app-content').style.display='none';document.getElementById('site-display-row').style.display='none';document.getElementById('overall-progress-wrap').style.display='none';}
+  if (APP.siteNumber && APP.project) {
+    if (typeof _selectedProject !== 'undefined') _selectedProject = APP.project;
+    showMainContent();
+    await loadCategories();
+    await syncSiteState();
+    renderCategories();
+    updateOverallProgress();
+    processUploadQueue();
+  } else {
+    document.getElementById('site-setup-screen').style.display = 'flex';
+    var _s1x = document.getElementById('setup-step-1'); if (_s1x) _s1x.style.display = '';
+    var _s2x = document.getElementById('setup-step-2'); if (_s2x) _s2x.style.display = 'none';
+    document.getElementById('app-content').style.display = 'none';
+    document.getElementById('site-display-row').style.display = 'none';
+    document.getElementById('overall-progress-wrap').style.display = 'none';
+  }
 }
 
 var _selectedProject=null;
-function goToStep2(){var val=document.getElementById('site-number-input').value.trim();if(!val){toast('Enter site number.','error');return;}APP.siteNumber=val;var lbl=document.getElementById('step2-site-label');if(lbl)lbl.textContent='Site '+val;var s1x=document.getElementById('setup-step-1');if(s1x)s1x.style.display='none';var s2x=document.getElementById('setup-step-2');if(s2x)s2x.style.display='';renderProjectList();}
+function goToStep2() {
+  var val = document.getElementById('site-number-input').value.trim();
+  APP.siteNumber = val || null;
+  var lbl = document.getElementById('step2-site-label');
+  if (lbl) lbl.textContent = val ? 'Site ' + val : 'Open jobs';
+  var s1x = document.getElementById('setup-step-1'); if (s1x) s1x.style.display = 'none';
+  var s2x = document.getElementById('setup-step-2'); if (s2x) s2x.style.display = '';
+  renderProjectList();
+}
 function backToStep1(){var s1x=document.getElementById('setup-step-1');if(s1x)s1x.style.display='';var s2x=document.getElementById('setup-step-2');if(s2x)s2x.style.display='none';_selectedProject=null;var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=true;}
-async function renderProjectList(){var wrap=document.getElementById('project-list-wrap');if(!wrap)return;wrap.innerHTML='<div style="text-align:center;padding:20px">Loading...</div>';var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=true;try{var r=await gasCall('getProjects');APP.projects=r.projects||[];}catch(e){APP.projects=[];}if(!APP.projects.length){wrap.innerHTML='<div style="text-align:center;padding:16px;color:var(--error)">No projects found.</div>';return;}var list=document.createElement('div');list.className='project-list';APP.projects.forEach(function(proj){var c=document.createElement('div');c.className='project-card'+(_selectedProject===proj.name?' selected':'');c.onclick=function(){selectProject(proj.name);};c.innerHTML='<div class="project-card-radio"></div><div class="project-card-info"><div class="project-card-name">'+proj.name+'</div>'+(proj.description?'<div class="project-card-desc">'+proj.description+'</div>':'')+'</div>';list.appendChild(c);});wrap.innerHTML='';wrap.appendChild(list);}
-function selectProject(name){_selectedProject=name;document.querySelectorAll('.project-card').forEach(function(c){c.classList.toggle('selected',c.querySelector('.project-card-name').textContent===name);});var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=false;}
-async function confirmSite(){if(!APP.siteNumber){var v=document.getElementById('site-number-input').value.trim();if(!v){toast('Enter site number.','error');return;}APP.siteNumber=v;}if(!_selectedProject){toast('Select a project.','error');return;}APP.project=_selectedProject;await saveState();showMainContent();await loadCategories();renderCategories();updateOverallProgress();processUploadQueue();}
+async function renderProjectList() {
+  var wrap = document.getElementById('project-list-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;padding:20px">Loading...</div>';
+  var btn = document.getElementById('btn-start-doc');
+  if (btn) btn.disabled = true;
+  try {
+    var r = await gasCall('getProjects', { email: APP.user ? APP.user.email : '' });
+    APP.projects = r.projects || [];
+  } catch(e) { APP.projects = []; }
+  if (!APP.projects.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--error)">No assigned projects found.</div>';
+    renderOpenSites([]);
+    return;
+  }
+  var list = document.createElement('div');
+  list.className = 'project-list';
+  APP.projects.forEach(function(proj) {
+    var c = document.createElement('div');
+    c.className = 'project-card' + (_selectedProject === proj.name ? ' selected' : '');
+    c.onclick = function(){ selectProject(proj.name); };
+    c.innerHTML = '<div class="project-card-radio"></div><div class="project-card-info"><div class="project-card-name">'+proj.name+'</div>'+(proj.description?'<div class="project-card-desc">'+proj.description+'</div>':'')+'</div>';
+    list.appendChild(c);
+  });
+  wrap.innerHTML = '';
+  wrap.appendChild(list);
+  await loadOpenSites();
+}
+async function loadOpenSites() {
+  try {
+    var r = await gasCall('getOpenSites', { email: APP.user ? APP.user.email : '' });
+    APP.openSites = r.sites || [];
+  } catch(e) { APP.openSites = []; }
+  renderOpenSites(APP.openSites);
+}
+function renderOpenSites(sites) {
+  var wrap = document.getElementById('open-sites-wrap');
+  if (!wrap) return;
+  if (!sites || !sites.length) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.style.display = '';
+  wrap.innerHTML = '<div class="open-sites-title">Open jobs</div>';
+  sites.forEach(function(site) {
+    var card = document.createElement('div');
+    card.className = 'open-site-card';
+    card.onclick = function(){ openExistingSite(site.siteNumber, site.project); };
+    card.innerHTML =
+      '<div class="open-site-main">' +
+        '<div class="open-site-name">Site_' + site.siteNumber + '</div>' +
+        '<div class="open-site-meta">' + site.project + (site.createdByName ? ' · opened by ' + site.createdByName : '') + '</div>' +
+      '</div>' +
+      '<div class="open-site-action">Open</div>';
+    wrap.appendChild(card);
+  });
+}
+function selectProject(name) {
+  _selectedProject = name;
+  document.querySelectorAll('.project-card').forEach(function(c) {
+    c.classList.toggle('selected', c.querySelector('.project-card-name').textContent === name);
+  });
+  var btn = document.getElementById('btn-start-doc');
+  if (btn) btn.disabled = !APP.siteNumber;
+}
+async function openExistingSite(siteNumber, project) {
+  APP.siteNumber = siteNumber;
+  APP.project = project;
+  _selectedProject = project;
+  await startActiveSite();
+  await saveState();
+  showMainContent();
+  await loadCategories();
+  await syncSiteState();
+  renderCategories();
+  updateOverallProgress();
+  processUploadQueue();
+}
+async function startActiveSite() {
+  return await gasCall('startSite', {
+    siteNumber: APP.siteNumber,
+    project: APP.project || '',
+    userName: APP.user ? APP.user.name : '',
+    userEmail: APP.user ? APP.user.email : ''
+  });
+}
+async function confirmSite() {
+  if (!APP.siteNumber) {
+    var v = document.getElementById('site-number-input').value.trim();
+    if (!v) { toast('Enter site number or open an existing job.', 'error'); return; }
+    APP.siteNumber = v;
+  }
+  if (!_selectedProject) { toast('Select a project.', 'error'); return; }
+  APP.project = _selectedProject;
+  var started = await startActiveSite();
+  if (started && started.success === false) {
+    toast(started.message || 'Cannot start this job.', 'error');
+    return;
+  }
+  await saveState();
+  showMainContent();
+  await loadCategories();
+  await syncSiteState();
+  renderCategories();
+  updateOverallProgress();
+  processUploadQueue();
+}
 
 
 function showMainContent() {
@@ -1936,7 +2115,10 @@ async function changeSiteNumber(){APP.siteNumber=null;APP.project=null;APP.photo
 async function loadCategories() {
   showSpinner('Loading categories...');
   try {
-    const res = await gasCall('getCategories', { project: APP.project || '' });
+    const res = await gasCall('getCategories', {
+      project: APP.project || '',
+      userEmail: APP.user ? APP.user.email : ''
+    });
     if (res.categories) {
       APP.categories = res.categories; // [{category, subcategory, required, active}]
     }
@@ -1944,6 +2126,38 @@ async function loadCategories() {
     toast('Could not load categories. Using cached.', 'warning');
     // Try to use whatever is in memory
   } finally { hideSpinner(); }
+}
+
+async function syncSiteState() {
+  if (!APP.siteNumber || !APP.project) return;
+  try {
+    const res = await gasCall('getSiteState', {
+      siteNumber: APP.siteNumber,
+      project: APP.project || '',
+      userEmail: APP.user ? APP.user.email : ''
+    });
+    if (res.naStatus) APP.naStatus = { ...APP.naStatus, ...res.naStatus };
+    if (res.photos && res.photos.length) {
+      res.photos.forEach(function(p) {
+        const key = p.key || photoKey(p.category, p.subcategory);
+        if (!APP.photos[key]) APP.photos[key] = [];
+        const exists = APP.photos[key].some(ph => ph.driveId === p.fileId || ph.name === p.name);
+        if (!exists) {
+          APP.photos[key].push({
+            id: 'drive_' + p.fileId,
+            name: p.name,
+            status: 'done',
+            driveId: p.fileId,
+            thumbUrl: p.thumbUrl || '',
+            blob: null
+          });
+        }
+      });
+    }
+    await saveState();
+  } catch(e) {
+    console.warn('[SYNC SITE]', e.message);
+  }
 }
 
 function getCategoryGroups() {
@@ -2754,6 +2968,7 @@ function updateSubmitButton() {
 //  SUBMIT
 // ════════════════════════════════════════════════════
 async function handleSubmit() {
+  await syncSiteState();
   // Final validation
   const groups = getCategoryGroups();
   let allDone  = true;
@@ -2784,14 +2999,23 @@ async function handleSubmit() {
     });
 
     if (res.success) {
+      var submittedSite = APP.siteNumber;
+      var submittedProject = APP.project || '-';
+      var submittedUser = APP.user ? APP.user.name : '-';
       var _mEl=document.getElementById('success-meta-body');
       _mEl.innerHTML=
-        '<div class="success-meta-row"><span class="label">Site</span><span class="val">Site_'+APP.siteNumber+'</span></div>'+
-        '<div class="success-meta-row"><span class="label">Project</span><span class="val">'+(APP.project||'-')+'</span></div>'+
-        '<div class="success-meta-row"><span class="label">Technician</span><span class="val">'+(APP.user?APP.user.name:'-')+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Site</span><span class="val">Site_'+submittedSite+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Project</span><span class="val">'+submittedProject+'</span></div>'+
+        '<div class="success-meta-row"><span class="label">Technician</span><span class="val">'+submittedUser+'</span></div>'+
         '<div class="success-meta-row"><span class="label">Photos</span><span class="val green">'+totalPhotos+' uploaded</span></div>'+
         '<div class="success-meta-row"><span class="label">N/A Items</span><span class="val">'+totalNA+'</span></div>'+
         '<div class="success-meta-row"><span class="label">Date</span><span class="val">'+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</span></div>'
+      APP.siteNumber = null;
+      APP.project = null;
+      APP.photos = {};
+      APP.naStatus = {};
+      APP.uploadQueue = [];
+      await saveState();
       showPage('page-success');
     } else {
       toast('Submission failed: ' + (res.message || 'Unknown error'), 'error');
