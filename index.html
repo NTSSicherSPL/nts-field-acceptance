@@ -1452,15 +1452,14 @@
 <div class="modal-overlay" id="modal-site">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-site')">✕</button>
-    <h3>Change Site / Project</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
-      Selectează opțiunea dorită:
-    </p>
-    <div class="form-actions" style="flex-direction:column;gap:10px;">
-      <button class="btn btn-primary" onclick="changeSiteNumber()">
-        🔄 Site nou + Proiect nou
-      </button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-site')">Anulează</button>
+    <h3>Change Site Number</h3>
+    <div class="form-group">
+      <label>Site Number</label>
+      <input type="text" id="modal-site-input" placeholder="e.g. 12345" />
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="changeSiteNumber()">Confirm</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-site')">Cancel</button>
     </div>
   </div>
 </div>
