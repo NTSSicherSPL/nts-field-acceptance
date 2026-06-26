@@ -1697,13 +1697,8 @@ async function restorePendingBlobs() {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
-
-  // uploadPhoto sends large base64 data — skip GET entirely and use POST
-  if (action === 'uploadPhoto') {
-    return await gasCallPost(payload);
-  }
-
-  // All other actions use GET ?payload= (works cross-origin)
+  // All actions use GET ?payload= — works cross-origin without CORS issues
+  // For uploadPhoto: base64 is compressed to ~300KB which fits in URL
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
   try {
     const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
@@ -1719,20 +1714,15 @@ async function gasCall(action, data = {}) {
 }
 
 async function gasCallPost(payload) {
-  // POST with no-cors for uploadPhoto (avoids CORS preflight)
+  // POST fallback with no-cors for upload
   if (payload.action === 'uploadPhoto') {
-    try {
-      await fetch(CONFIG.GAS_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      });
-    } catch(e) {
-      console.warn('[POST no-cors] uploadPhoto fetch error:', e.message);
-    }
-    // no-cors = opaque response, cannot read result — assume success
-    console.log('[UPLOAD] POST no-cors sent (optimistic success):', payload.fileName);
+    await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    });
+    // no-cors = opaque response, assume success
     return { success: true, optimistic: true };
   }
   throw new Error('POST fallback not available for: ' + payload.action);
@@ -2425,6 +2415,7 @@ function showInfoModal(cat, sub) {
   document.getElementById('info-modal-title').textContent = sub;
 
   const body = document.getElementById('info-modal-body');
+  body.innerHTML = ''; // golește conținutul anterior
 
   // Required badge
   let html = `<div class="info-required-badge">📷 ${subDef.required} photo${subDef.required !== 1 ? 's' : ''} required</div>`;
@@ -2433,6 +2424,13 @@ function showInfoModal(cat, sub) {
   if (subDef.instructions) {
     html += `<div class="info-instructions">${subDef.instructions}</div>`;
   }
+
+  if (!subDef.instructions && (!subDef.imageUrls || !subDef.imageUrls.trim())) {
+    html += `<div class="info-no-content">ℹ️ No instructions added yet.<br><span style="font-size:11px;color:var(--text-dim)">Add instructions and image URLs in the Categories sheet.</span></div>`;
+  }
+
+  // Scrie html în body
+  body.innerHTML = html;
 
   // Sample images from Google Drive
   if (subDef.imageUrls && subDef.imageUrls.trim()) {
@@ -2464,10 +2462,6 @@ function showInfoModal(cat, sub) {
       });
       body.appendChild(_grid);
     }
-  }
-
-  if (!subDef.instructions && (!subDef.imageUrls || !subDef.imageUrls.trim())) {
-    html = `<div class="info-no-content">ℹ️ No instructions added yet.<br><span style="font-size:11px;color:var(--text-dim)">Add instructions and image URLs in the Categories sheet.</span></div>`;
   }
 
   showModal('modal-info');
@@ -2595,16 +2589,16 @@ async function processUploadQueue() {
     updateQueueBar();
 
     try {
-      // Use photo.blob directly — already compressed at capture (4096px, 0.95 quality)
-      // No additional recompression to preserve maximum upload quality
-      if (!photo.blob) {
+      // Compress to 1500px for upload (reduces base64 from ~5MB to ~300KB)
+      const uploadBlob = photo.blob ? await compressImage(photo.blob, 1500, 0.80) : null;
+      if (!uploadBlob) {
         // Blob lost - try to restore from IndexedDB
         const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
         if (!stored) { APP.uploadQueue.shift(); continue; }
         photo.blob = stored.blob;
       }
-      const b64 = await blobToBase64(photo.blob);
-      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB (max quality)');
+      const b64 = await blobToBase64(uploadBlob || photo.blob);
+      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB');
 
       const res = await gasCall('uploadPhoto', {
         siteNumber:  APP.siteNumber,
