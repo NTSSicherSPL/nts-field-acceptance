@@ -25,6 +25,8 @@ var SHEET_CAT_MASTER  = 'Category_Master';
 var SHEET_PROJ_CATS   = 'Project_Categories';
 var SHEET_SUBMISSIONS = 'Submissions';
 var SHEET_NA_LOG      = 'NA_Log';
+var SHEET_USER_PROJECTS = 'User_Projects';
+var SHEET_ACTIVE_SITES  = 'Active_Sites';
 
 // Sheet-uri vechi care vor fi șterse după migrare
 var SHEET_OLD_CATEGORIES = 'Categories';
@@ -56,7 +58,9 @@ function setupSheets() {
   // ── STEP 4: Creează Project_Categories ──
   ensureProjectCategories(ss, log);
 
-  // ── STEP 5: Asigură Submissions și NA_Log ──
+  // ── STEP 5: Asigură asignările, lucrările active, Submissions și NA_Log ──
+  ensureUserProjects(ss, log);
+  ensureActiveSites(ss, log);
   ensureSubmissions(ss, log);
   ensureNALog(ss, log);
 
@@ -246,6 +250,52 @@ function ensureProjectCategories(ss, log) {
 }
 
 // -----------------------------------------------
+//  ENSURE USER_PROJECTS
+// -----------------------------------------------
+function ensureUserProjects(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_USER_PROJECTS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_USER_PROJECTS);
+    sheet.appendRow(['Email', 'Project', 'Active']);
+    styleHeader(sheet, 3);
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['TRUE', 'FALSE'], true).build();
+    sheet.getRange('C2:C5000').setDataValidation(rule);
+    sheet.setColumnWidth(1, 260);
+    sheet.setColumnWidth(2, 240);
+    sheet.setColumnWidth(3, 80);
+    sheet.setFrozenRows(1);
+    sheet.getRange('A2').setNote(
+      'Completeaza manual:\n' +
+      '- Coloana A: email utilizator aprobat\n' +
+      '- Coloana B: proiect asignat\n' +
+      '- Coloana C: TRUE / FALSE\n' +
+      'Adauga cate un rand pentru fiecare proiect asignat.'
+    );
+    log.push('✓ Created: User_Projects (asigneaza utilizatori la proiecte)');
+  } else {
+    log.push('→ Kept existing: User_Projects (' + (sheet.getLastRow() - 1) + ' asignari)');
+  }
+}
+
+// -----------------------------------------------
+//  ENSURE ACTIVE_SITES
+// -----------------------------------------------
+function ensureActiveSites(ss, log) {
+  var sheet = ss.getSheetByName(SHEET_ACTIVE_SITES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ACTIVE_SITES);
+    sheet.appendRow(['Site Number','Project','Created By Name','Created By Email','Created At','Status','Last Updated']);
+    styleHeader(sheet, 7);
+    [120,220,180,240,180,100,180].forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
+    sheet.setFrozenRows(1);
+    log.push('✓ Created: Active_Sites');
+  } else {
+    log.push('→ Kept existing: Active_Sites (' + (sheet.getLastRow() - 1) + ' lucrari)');
+  }
+}
+
+// -----------------------------------------------
 //  ENSURE SUBMISSIONS
 // -----------------------------------------------
 function ensureSubmissions(ss, log) {
@@ -321,6 +371,8 @@ function orderSheets(ss) {
     SHEET_PROJECTS,
     SHEET_CAT_MASTER,
     SHEET_PROJ_CATS,
+    SHEET_USER_PROJECTS,
+    SHEET_ACTIVE_SITES,
     SHEET_SUBMISSIONS,
     SHEET_NA_LOG
   ];
@@ -378,7 +430,10 @@ function handleRequest(e) {
     switch (data.action) {
       case 'login':          result = actionLogin(data);         break;
       case 'requestAccess':  result = actionRequestAccess(data); break;
-      case 'getProjects':    result = actionGetProjects();        break;
+      case 'getProjects':    result = actionGetProjects(data);    break;
+      case 'getOpenSites':   result = actionGetOpenSites(data);   break;
+      case 'startSite':      result = actionStartSite(data);      break;
+      case 'getSiteState':   result = actionGetSiteState(data);   break;
       case 'getCategories':  result = actionGetCategories(data); break;
       case 'uploadPhoto':    result = actionUploadPhoto(data);   break;
       case 'submitProject':  result = actionSubmitProject(data); break;
@@ -446,32 +501,161 @@ function actionRequestAccess(data) {
 
 // -----------------------------------------------
 //  GET PROJECTS
+//  Citește proiectele unice direct din Project_Categories
+//  + descrierea din sheet-ul Projects (dacă există)
 // -----------------------------------------------
-function actionGetProjects() {
-  var sheet = getSpreadsheet().getSheetByName(SHEET_PROJECTS);
-  if (!sheet) return { projects: [] };
-  var last = sheet.getLastRow();
-  if (last < 2) return { projects: [] };
-  var rows = sheet.getRange(2, 1, last - 1, 3).getValues();
-  var projects = [];
-  for (var i = 0; i < rows.length; i++) {
-    if (!rows[i][0]) continue;
-    if (String(rows[i][2]).toUpperCase() === 'FALSE') continue;
-    projects.push({
-      name:        String(rows[i][0]).trim(),
-      description: String(rows[i][1] || '').trim()
-    });
+function actionGetProjects(data) {
+  data = data || {};
+  var email = (data.email || '').toLowerCase().trim();
+  var ss = getSpreadsheet();
+  var allowedMap = getAllowedProjectMap(ss, email);
+
+  // Citește descrierile din Projects (opțional)
+  var descMap = {};
+  var projSheet = ss.getSheetByName(SHEET_PROJECTS);
+  if (projSheet && projSheet.getLastRow() >= 2) {
+    projSheet.getRange(2, 1, projSheet.getLastRow() - 1, 3).getValues()
+      .forEach(function(r) {
+        if (r[0]) descMap[String(r[0]).trim()] = {
+          description: String(r[1] || '').trim(),
+          active: String(r[2] || 'TRUE').toUpperCase()
+        };
+      });
   }
+
+  // Citește proiectele unice din Project_Categories
+  var pc = ss.getSheetByName(SHEET_PROJ_CATS);
+  if (!pc) return { projects: [], error: 'Sheet Project_Categories lipseste. Ruleaza setupSheets().' };
+  var last = pc.getLastRow();
+  if (last < 2) return { projects: [], error: 'Sheet Project_Categories este gol.' };
+  var rows = pc.getRange(2, 1, last - 1, 4).getValues();
+
+  var seen = {};
+  var projects = [];
+  rows.forEach(function(r) {
+    var name   = String(r[0] || '').trim();
+    var active = String(r[3] || 'TRUE').toUpperCase();
+    if (!name || seen[name]) return;
+    if (active === 'FALSE') return;
+    if (descMap[name] && descMap[name].active === 'FALSE') return;
+    if (allowedMap && !allowedMap[name]) return;
+    seen[name] = true;
+    projects.push({
+      name:        name,
+      description: descMap[name] ? descMap[name].description : ''
+    });
+  });
+
+  Logger.log('getProjects: ' + projects.length + ' proiecte din Project_Categories');
   return { projects: projects };
 }
 
+function getAllowedProjectMap(ss, email) {
+  var up = ss.getSheetByName(SHEET_USER_PROJECTS);
+  if (!up || up.getLastRow() < 2) return null;
+  var rows = up.getRange(2, 1, up.getLastRow() - 1, 3).getValues();
+  var hasAssignments = false;
+  var allowed = {};
+  rows.forEach(function(r) {
+    var rowEmail = String(r[0] || '').toLowerCase().trim();
+    var project  = String(r[1] || '').trim();
+    var active   = String(r[2] || 'TRUE').toUpperCase();
+    if (!rowEmail || !project || active === 'FALSE') return;
+    hasAssignments = true;
+    if (email && rowEmail === email) allowed[project] = true;
+  });
+  if (!hasAssignments) return null;
+  return allowed;
+}
+
+function userCanAccessProject(ss, email, project) {
+  var allowedMap = getAllowedProjectMap(ss, email);
+  return !allowedMap || !!allowedMap[project];
+}
+
+// -----------------------------------------------
+//  GET OPEN SITES
+// -----------------------------------------------
+function actionGetOpenSites(data) {
+  var email = (data.email || '').toLowerCase().trim();
+  var projectFilter = (data.project || '').trim();
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_ACTIVE_SITES);
+  if (!sheet || sheet.getLastRow() < 2) return { sites: [] };
+
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  var sites = [];
+  rows.forEach(function(r) {
+    var site    = String(r[0] || '').replace(/^Site_/, '').trim();
+    var project = String(r[1] || '').trim();
+    var status  = String(r[5] || 'Open').toLowerCase();
+    if (!site || !project || status !== 'open') return;
+    if (projectFilter && project !== projectFilter) return;
+    if (!userCanAccessProject(ss, email, project)) return;
+    sites.push({
+      siteNumber: site,
+      project: project,
+      createdByName: String(r[2] || '').trim(),
+      createdByEmail: String(r[3] || '').trim(),
+      createdAt: r[4] ? String(r[4]) : '',
+      lastUpdated: r[6] ? String(r[6]) : ''
+    });
+  });
+  return { sites: sites };
+}
+
+// -----------------------------------------------
+//  START SITE
+// -----------------------------------------------
+function actionStartSite(data) {
+  var siteNumber = (data.siteNumber || '').replace(/^Site_/, '').trim();
+  var project    = (data.project || '').trim();
+  var userEmail  = (data.userEmail || '').toLowerCase().trim();
+  var userName   = (data.userName || '').trim();
+  if (!siteNumber || !project) return { success: false, message: 'Missing site/project' };
+
+  var ss = getSpreadsheet();
+  if (!userCanAccessProject(ss, userEmail, project)) {
+    return { success: false, message: 'User is not assigned to this project' };
+  }
+
+  var sheet = ss.getSheetByName(SHEET_ACTIVE_SITES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ACTIVE_SITES);
+    sheet.appendRow(['Site Number','Project','Created By Name','Created By Email','Created At','Status','Last Updated']);
+    styleHeader(sheet, 7);
+  }
+
+  var now = new Date().toISOString();
+  var last = sheet.getLastRow();
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, 7).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      var rowSite = String(rows[i][0] || '').replace(/^Site_/, '').trim();
+      var rowProject = String(rows[i][1] || '').trim();
+      var status = String(rows[i][5] || 'Open').toLowerCase();
+      if (rowSite === siteNumber && rowProject === project && status === 'open') {
+        sheet.getRange(i + 2, 7).setValue(now);
+        return { success: true, existing: true };
+      }
+    }
+  }
+
+  sheet.appendRow(['Site_' + siteNumber, project, userName, userEmail, now, 'Open', now]);
+  SpreadsheetApp.flush();
+  return { success: true, existing: false };
+}
 // -----------------------------------------------
 //  GET CATEGORIES
 //  JOIN: Category_Master + Project_Categories
 // -----------------------------------------------
 function actionGetCategories(data) {
   var projectName = (data.project || '').trim();
+  var userEmail = (data.userEmail || data.email || '').toLowerCase().trim();
   var ss = getSpreadsheet();
+  if (projectName && !userCanAccessProject(ss, userEmail, projectName)) {
+    return { categories: [], error: 'User is not assigned to this project' };
+  }
 
   // Citește Category_Master → map ID → detalii
   var cm = ss.getSheetByName(SHEET_CAT_MASTER);
@@ -535,6 +719,10 @@ function actionUploadPhoto(data) {
   var base64Data  = data.base64Data   || '';
   var mimeType    = data.mimeType     || 'image/jpeg';
   if (!siteNumber || !base64Data) return { success: false, message: 'Missing fields' };
+  var userEmail = (data.userEmail || '').toLowerCase().trim();
+  if (project && !userCanAccessProject(getSpreadsheet(), userEmail, project)) {
+    return { success: false, message: 'User is not assigned to this project' };
+  }
 
   var root    = DriveApp.getFolderById(DRIVE_FOLDER_ID);
   var siteFol = getOrCreateFolder(root, 'Site_' + siteNumber);
@@ -542,12 +730,105 @@ function actionUploadPhoto(data) {
   var catFol  = getOrCreateFolder(projFol, category);
   var subFol  = getOrCreateFolder(catFol, subcategory);
 
-  var ex = subFol.getFilesByName(fileName);
-  if (ex.hasNext()) return { success: true, fileId: ex.next().getId() };
+  fileName = getNextAvailablePhotoName(subFol, fileName);
 
   var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
   var file = subFol.createFile(blob);
+  touchActiveSite(siteNumber, project);
   return { success: true, fileId: file.getId(), fileName: fileName };
+}
+
+function getNextAvailablePhotoName(folder, fileName) {
+  if (!folder.getFilesByName(fileName).hasNext()) return fileName;
+
+  var dot = fileName.lastIndexOf('.');
+  var ext = dot >= 0 ? fileName.substring(dot) : '.jpg';
+  var base = dot >= 0 ? fileName.substring(0, dot) : fileName;
+  var m = base.match(/^(.*_)(\d{3})$/);
+  if (!m) {
+    var fallback = base + '_001' + ext;
+    return folder.getFilesByName(fallback).hasNext()
+      ? getNextAvailablePhotoName(folder, fallback)
+      : fallback;
+  }
+
+  var prefix = m[1];
+  var n = Number(m[2]) || 1;
+  var nextName = fileName;
+  do {
+    n++;
+    nextName = prefix + String(n).padStart(3, '0') + ext;
+  } while (folder.getFilesByName(nextName).hasNext());
+  return nextName;
+}
+
+// -----------------------------------------------
+//  GET SITE STATE FROM DRIVE + N/A LOG
+// -----------------------------------------------
+function actionGetSiteState(data) {
+  var siteNumber = (data.siteNumber || '').replace(/^Site_/, '').trim();
+  var project    = (data.project || '').trim();
+  var userEmail  = (data.userEmail || data.email || '').toLowerCase().trim();
+  if (!siteNumber || !project) return { photos: [], naStatus: {} };
+
+  var ss = getSpreadsheet();
+  if (!userCanAccessProject(ss, userEmail, project)) {
+    return { photos: [], naStatus: {}, error: 'User is not assigned to this project' };
+  }
+
+  var photos = [];
+  try {
+    var root = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    var siteFolders = root.getFoldersByName('Site_' + siteNumber);
+    if (siteFolders.hasNext()) {
+      var siteFol = siteFolders.next();
+      var projectFolders = siteFol.getFoldersByName(project);
+      if (projectFolders.hasNext()) {
+        var projFol = projectFolders.next();
+        var catFolders = projFol.getFolders();
+        while (catFolders.hasNext()) {
+          var catFol = catFolders.next();
+          var subFolders = catFol.getFolders();
+          while (subFolders.hasNext()) {
+            var subFol = subFolders.next();
+            var files = subFol.getFiles();
+            while (files.hasNext()) {
+              var file = files.next();
+              photos.push({
+                category: catFol.getName(),
+                subcategory: subFol.getName(),
+                key: catFol.getName() + '|||' + subFol.getName(),
+                name: file.getName(),
+                fileId: file.getId(),
+                thumbUrl: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w400'
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    Logger.log('getSiteState Drive error: ' + e.message);
+  }
+
+  var naStatus = {};
+  var naSheet = ss.getSheetByName(SHEET_NA_LOG);
+  if (naSheet && naSheet.getLastRow() >= 2) {
+    naSheet.getRange(2, 1, naSheet.getLastRow() - 1, 8).getValues().forEach(function(r) {
+      var rowSite = String(r[0] || '').replace(/^Site_/, '').trim();
+      var rowProject = String(r[1] || '').trim();
+      if (rowSite !== siteNumber || rowProject !== project) return;
+      var cat = String(r[2] || '').trim();
+      var sub = String(r[3] || '').trim();
+      if (!cat || !sub) return;
+      naStatus[cat + '|||' + sub] = {
+        markedBy: String(r[4] || '').trim(),
+        markedAt: String(r[6] || '').trim()
+      };
+    });
+  }
+
+  return { photos: photos, naStatus: naStatus };
 }
 
 // -----------------------------------------------
@@ -577,6 +858,9 @@ function actionSubmitProject(data) {
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_SUBMISSIONS);
   if (!sheet) return { success: false };
+  if (data.project && !userCanAccessProject(ss, (data.userEmail || '').toLowerCase().trim(), data.project)) {
+    return { success: false, message: 'User is not assigned to this project' };
+  }
 
   var naDetails    = data.naDetails || [];
   var naDetailsStr = naDetails.length
@@ -618,7 +902,46 @@ function actionSubmitProject(data) {
     }
   }
   SpreadsheetApp.flush();
+  completeActiveSite(data.siteNumber || '', data.project || '');
   return { success: true };
+}
+
+function touchActiveSite(siteNumber, project) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_ACTIVE_SITES);
+  if (!sheet || !project) return;
+  var cleanSite = String(siteNumber || '').replace(/^Site_/, '').trim();
+  var last = sheet.getLastRow();
+  if (last < 2) return;
+  var rows = sheet.getRange(2, 1, last - 1, 7).getValues();
+  for (var i = 0; i < rows.length; i++) {
+    var rowSite = String(rows[i][0] || '').replace(/^Site_/, '').trim();
+    var rowProject = String(rows[i][1] || '').trim();
+    var status = String(rows[i][5] || 'Open').toLowerCase();
+    if (rowSite === cleanSite && rowProject === project && status === 'open') {
+      sheet.getRange(i + 2, 7).setValue(new Date().toISOString());
+      return;
+    }
+  }
+}
+
+function completeActiveSite(siteNumber, project) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_ACTIVE_SITES);
+  if (!sheet || !project) return;
+  var cleanSite = String(siteNumber || '').replace(/^Site_/, '').trim();
+  var last = sheet.getLastRow();
+  if (last < 2) return;
+  var rows = sheet.getRange(2, 1, last - 1, 7).getValues();
+  for (var i = 0; i < rows.length; i++) {
+    var rowSite = String(rows[i][0] || '').replace(/^Site_/, '').trim();
+    var rowProject = String(rows[i][1] || '').trim();
+    var status = String(rows[i][5] || 'Open').toLowerCase();
+    if (rowSite === cleanSite && rowProject === project && status === 'open') {
+      sheet.getRange(i + 2, 6, 1, 2).setValues([['Completed', new Date().toISOString()]]);
+      return;
+    }
+  }
 }
 
 // -----------------------------------------------
