@@ -1697,37 +1697,21 @@ async function restorePendingBlobs() {
 // ════════════════════════════════════════════════════
 async function gasCall(action, data = {}) {
   const payload = { action, ...data };
-  // All actions use GET ?payload= — works cross-origin without CORS issues
-  // For uploadPhoto: base64 is compressed to ~300KB which fits in URL
   const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify(payload));
+  console.log('[GAS] action:', action, 'url:', Math.round(url.length/1024*10)/10, 'KB');
+
   try {
     const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
     const text = await resp.text();
-    if (text.trim().startsWith('<')) {
-      // Got HTML redirect (GAS login page) - try POST fallback
-      return await gasCallPost(payload);
-    }
-    return JSON.parse(text);
+    if (text.trim().startsWith('<')) throw new Error('HTML redirect from GAS');
+    const result = JSON.parse(text);
+    console.log('[GAS] ok, action:', action);
+    return result;
   } catch(e) {
-    return await gasCallPost(payload);
+    console.error('[GAS] error action:', action, '-', e.message);
+    throw e;
   }
 }
-
-async function gasCallPost(payload) {
-  // POST fallback with no-cors for upload
-  if (payload.action === 'uploadPhoto') {
-    await fetch(CONFIG.GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload),
-    });
-    // no-cors = opaque response, assume success
-    return { success: true, optimistic: true };
-  }
-  throw new Error('POST fallback not available for: ' + payload.action);
-}
-
 
 // ════════════════════════════════════════════════════
 //  ACCESS FLOW - unified request + auto-login + polling
@@ -2572,9 +2556,10 @@ async function processUploadQueue() {
   updateQueueBar();
 
   while (APP.uploadQueue.length > 0 && APP.isOnline) {
-    const item = APP.uploadQueue[0];
+    const item   = APP.uploadQueue[0];
     const photos = APP.photos[item.key] || [];
     const photo  = photos.find(p => p.id === item.photoId);
+
     if (!photo || photo.status === 'done') {
       APP.uploadQueue.shift();
       continue;
@@ -2585,16 +2570,46 @@ async function processUploadQueue() {
     updateQueueBar();
 
     try {
-      // Compress to 1500px for upload (reduces base64 from ~5MB to ~300KB)
-      const uploadBlob = photo.blob ? await compressImage(photo.blob, 1500, 0.80) : null;
-      if (!uploadBlob) {
-        // Blob lost - try to restore from IndexedDB
+      // Restore blob from IndexedDB if needed
+      let sourceBlob = photo.blob;
+      if (!sourceBlob) {
         const stored = await dbGet(CONFIG.PHOTO_STORE, photo.id);
-        if (!stored) { APP.uploadQueue.shift(); continue; }
-        photo.blob = stored.blob;
+        if (!stored || !stored.blob) {
+          console.warn('[UPLOAD] blob not found, skipping:', photo.name);
+          APP.uploadQueue.shift();
+          photo.status = 'error';
+          continue;
+        }
+        sourceBlob = stored.blob;
+        photo.blob = sourceBlob;
       }
-      const b64 = await blobToBase64(uploadBlob || photo.blob);
-      console.log('[UPLOAD] ' + photo.name + ' b64=' + Math.round(b64.length/1024) + 'KB');
+
+      // Try progressively smaller compressions until URL fits
+      let b64 = null;
+      const attempts = [
+        { px: 1200, q: 0.80 },
+        { px: 900,  q: 0.75 },
+        { px: 600,  q: 0.70 },
+      ];
+
+      for (const attempt of attempts) {
+        const compressed = await compressImage(sourceBlob, attempt.px, attempt.q);
+        const candidate  = await blobToBase64(compressed);
+        const urlLen = CONFIG.GAS_URL.length + encodeURIComponent(
+          JSON.stringify({ action:'uploadPhoto', base64Data: candidate, siteNumber: APP.siteNumber,
+            project: APP.project||'', category: item.cat, subcategory: item.sub,
+            fileName: photo.name, mimeType:'image/jpeg' })
+        ).length + 10;
+        console.log('[UPLOAD]', photo.name, attempt.px+'px', Math.round(candidate.length/1024)+'KB b64', Math.round(urlLen/1024)+'KB url');
+        if (urlLen < 7500) {
+          b64 = candidate;
+          break;
+        }
+      }
+
+      if (!b64) {
+        throw new Error('Image too large even after max compression');
+      }
 
       const res = await gasCall('uploadPhoto', {
         siteNumber:  APP.siteNumber,
@@ -2614,19 +2629,18 @@ async function processUploadQueue() {
         photo.blob    = null;
         await dbDelete(CONFIG.PHOTO_STORE, photo.id);
         APP.uploadQueue.shift();
-        toast('Uploaded: ' + photo.name, 'success', 2000);
+        toast('✓ Uploaded: ' + photo.name, 'success', 2000);
+        console.log('[UPLOAD] done:', photo.name, 'fileId:', res.fileId);
       } else {
-        photo.status = 'error';
-        APP.uploadQueue.shift();
-        APP.uploadQueue.push(item);
-        await sleep(5000);
+        throw new Error(res ? (res.error || res.message || 'GAS returned failure') : 'No response from GAS');
       }
+
     } catch(e) {
-      console.error('[UPLOAD]', e.message);
+      console.error('[UPLOAD] error:', photo.name, '-', e.message);
       photo.status = 'error';
       APP.uploadQueue.shift();
-      APP.uploadQueue.push(item); // retry later, don't stop queue
-      await sleep(5000);
+      APP.uploadQueue.push(item);
+      await sleep(8000);
     }
 
     refreshSubCard(item.key);
@@ -2640,6 +2654,7 @@ async function processUploadQueue() {
   updateQueueBar();
   updateSubmitButton();
 }
+
 
 function blobToBase64(blob) {
   return new Promise((res, rej) => {
