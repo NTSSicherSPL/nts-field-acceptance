@@ -726,8 +726,7 @@ function actionUploadPhoto(data) {
 
   var root    = DriveApp.getFolderById(DRIVE_FOLDER_ID);
   var siteFol = getOrCreateFolder(root, 'Site_' + siteNumber);
-  var projFol = project ? getOrCreateFolder(siteFol, project) : siteFol;
-  var catFol  = getOrCreateFolder(projFol, category);
+  var catFol  = getOrCreateFolder(siteFol, category);
 
   fileName = getNextAvailablePhotoName(catFol, fileName);
 
@@ -788,51 +787,20 @@ function actionGetSiteState(data) {
     var siteFolders = root.getFoldersByName('Site_' + siteNumber);
     if (siteFolders.hasNext()) {
       var siteFol = siteFolders.next();
+      // Current layout: Site > Category > photo.jpg
+      var catFolders = siteFol.getFolders();
+      while (catFolders.hasNext()) {
+        var catFol = catFolders.next();
+        if (!subSlugMap[catFol.getName()]) continue;
+        appendCategoryPhotos(photos, catFol, siteNumber, project, subSlugMap, false);
+      }
+
+      // Read-only compatibility for Site > Project > Category.
       var projectFolders = siteFol.getFoldersByName(project);
       if (projectFolders.hasNext()) {
-        var projFol = projectFolders.next();
-        var catFolders = projFol.getFolders();
-        while (catFolders.hasNext()) {
-          var catFol = catFolders.next();
-          var catName = catFol.getName();
-          var directFiles = catFol.getFiles();
-          while (directFiles.hasNext()) {
-            var directFile = directFiles.next();
-            var directMeta = getPhotoMetaFromDescription(directFile);
-            var directSub = directMeta.subcategory || inferSubcategoryFromPhotoName(
-              directFile.getName(),
-              siteNumber,
-              catName,
-              subSlugMap[catName] || {}
-            );
-            if (directSub) {
-              photos.push({
-                category: directMeta.category || catName,
-                subcategory: directSub,
-                key: (directMeta.category || catName) + '|||' + directSub,
-                name: directFile.getName(),
-                fileId: directFile.getId(),
-                thumbUrl: 'https://drive.google.com/thumbnail?id=' + directFile.getId() + '&sz=w400'
-              });
-            }
-          }
-
-          var subFolders = catFol.getFolders();
-          while (subFolders.hasNext()) {
-            var subFol = subFolders.next();
-            var files = subFol.getFiles();
-            while (files.hasNext()) {
-              var file = files.next();
-              photos.push({
-                category: catName,
-                subcategory: subFol.getName(),
-                key: catName + '|||' + subFol.getName(),
-                name: file.getName(),
-                fileId: file.getId(),
-                thumbUrl: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w400'
-              });
-            }
-          }
+        var legacyCatFolders = projectFolders.next().getFolders();
+        while (legacyCatFolders.hasNext()) {
+          appendCategoryPhotos(photos, legacyCatFolders.next(), siteNumber, project, subSlugMap, true);
         }
       }
     }
@@ -860,12 +828,55 @@ function actionGetSiteState(data) {
   return { photos: photos, naStatus: naStatus };
 }
 
+function appendCategoryPhotos(photos, catFol, siteNumber, project, subSlugMap, legacyLayout) {
+  var catName = catFol.getName();
+  var directFiles = catFol.getFiles();
+  while (directFiles.hasNext()) {
+    var directFile = directFiles.next();
+    var directMeta = getPhotoMetaFromDescription(directFile);
+    if (!legacyLayout && directMeta.project && directMeta.project !== project) continue;
+    var directSub = directMeta.subcategory || inferSubcategoryFromPhotoName(
+      directFile.getName(), siteNumber, catName, subSlugMap[catName] || {}
+    );
+    if (directSub) {
+      var category = directMeta.category || catName;
+      photos.push({
+        category: category,
+        subcategory: directSub,
+        key: category + '|||' + directSub,
+        name: directFile.getName(),
+        fileId: directFile.getId(),
+        thumbUrl: 'https://drive.google.com/thumbnail?id=' + directFile.getId() + '&sz=w400'
+      });
+    }
+  }
+
+  // Compatibility with the oldest Category > Subcategory layout.
+  var subFolders = catFol.getFolders();
+  while (subFolders.hasNext()) {
+    var subFol = subFolders.next();
+    var files = subFol.getFiles();
+    while (files.hasNext()) {
+      var file = files.next();
+      photos.push({
+        category: catName,
+        subcategory: subFol.getName(),
+        key: catName + '|||' + subFol.getName(),
+        name: file.getName(),
+        fileId: file.getId(),
+        thumbUrl: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w400'
+      });
+    }
+  }
+}
+
 function getPhotoMetaFromDescription(file) {
   try {
     var desc = file.getDescription();
     if (!desc) return {};
     var meta = JSON.parse(desc);
     return {
+      project: String(meta.project || '').trim(),
       category: String(meta.category || '').trim(),
       subcategory: String(meta.subcategory || '').trim()
     };

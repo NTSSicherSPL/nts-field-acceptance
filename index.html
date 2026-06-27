@@ -1339,62 +1339,34 @@
   <div class="setup-wizard" id="site-setup-screen">
     <div class="setup-card">
 
-      <!-- Step 1: Site Number -->
+      <!-- Site, project and open jobs -->
       <div id="setup-step-1">
         <div class="setup-card-hdr">
           <div class="setup-badge">1</div>
           <div>
-            <h3>Site Number</h3>
-            <p>Enter a site number for a new job, or continue to open jobs</p>
+            <h3>Start or Continue a Site</h3>
+            <p>Select a project and enter a site number, or continue an open job</p>
           </div>
         </div>
         <div class="setup-body">
-          <div class="setup-progress">
-            <div class="setup-pill active"></div>
-            <div class="setup-pill"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:20px;">
-            <label>Site Number</label>
-            <input type="text" id="site-number-input"
-              placeholder="e.g. 12345 sau AB-123" autocomplete="off"
-              style="font-size:22px;font-weight:700;letter-spacing:2px;text-align:center;"
-              onkeydown="if(event.key==='Enter')goToStep2()" />
-          </div>
-          <button class="btn btn-primary" style="width:100%;" onclick="goToStep2()">
-            Next — Select Project →
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 2: Project Selection -->
-      <div id="setup-step-2" style="display:none;">
-        <div class="setup-card-hdr">
-          <div class="setup-badge done">2</div>
-          <div>
-            <h3>Select Project</h3>
-            <p id="step2-site-label">Site —</p>
-          </div>
-        </div>
-        <div class="setup-body">
-          <div class="setup-progress">
-            <div class="setup-pill done"></div>
-            <div class="setup-pill active"></div>
-          </div>
           <div id="project-list-wrap">
             <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">
               Loading projects...
             </div>
           </div>
           <div id="open-sites-wrap" class="open-sites-wrap" style="display:none;"></div>
-          <div style="display:flex;gap:10px;margin-top:14px;">
-            <button class="btn btn-ghost" style="flex-shrink:0;padding:12px 16px;" onclick="backToStep1()">
-              ← Back
-            </button>
-            <button class="btn btn-primary" style="flex:1;" id="btn-start-doc"
-              onclick="confirmSite()" disabled>
-              Start Documentation →
-            </button>
+          <div class="form-group" style="margin-bottom:20px;">
+            <label>Site Number</label>
+            <input type="text" id="site-number-input"
+              placeholder="e.g. 12345 sau AB-123" autocomplete="off"
+              style="font-size:22px;font-weight:700;letter-spacing:2px;text-align:center;"
+              oninput="updateStartButton()"
+              onkeydown="if(event.key==='Enter')confirmSite()" />
           </div>
+          <button class="btn btn-primary" style="width:100%;" id="btn-start-doc"
+            onclick="confirmSite()" disabled>
+            Start Documentation →
+          </button>
         </div>
       </div>
 
@@ -1970,24 +1942,19 @@ async function initApp() {
   } else {
     document.getElementById('site-setup-screen').style.display = 'flex';
     var _s1x = document.getElementById('setup-step-1'); if (_s1x) _s1x.style.display = '';
-    var _s2x = document.getElementById('setup-step-2'); if (_s2x) _s2x.style.display = 'none';
     document.getElementById('app-content').style.display = 'none';
     document.getElementById('site-display-row').style.display = 'none';
     document.getElementById('overall-progress-wrap').style.display = 'none';
+    await renderProjectList();
   }
 }
 
 var _selectedProject=null;
-function goToStep2() {
-  var val = document.getElementById('site-number-input').value.trim();
-  APP.siteNumber = val || null;
-  var lbl = document.getElementById('step2-site-label');
-  if (lbl) lbl.textContent = val ? 'Site ' + val : 'Open jobs';
-  var s1x = document.getElementById('setup-step-1'); if (s1x) s1x.style.display = 'none';
-  var s2x = document.getElementById('setup-step-2'); if (s2x) s2x.style.display = '';
-  renderProjectList();
+function updateStartButton() {
+  var input = document.getElementById('site-number-input');
+  var btn = document.getElementById('btn-start-doc');
+  if (btn) btn.disabled = !_selectedProject || !input || !input.value.trim();
 }
-function backToStep1(){var s1x=document.getElementById('setup-step-1');if(s1x)s1x.style.display='';var s2x=document.getElementById('setup-step-2');if(s2x)s2x.style.display='none';_selectedProject=null;var btn=document.getElementById('btn-start-doc');if(btn)btn.disabled=true;}
 async function renderProjectList() {
   var wrap = document.getElementById('project-list-wrap');
   if (!wrap) return;
@@ -2026,6 +1993,9 @@ async function loadOpenSites() {
 function renderOpenSites(sites) {
   var wrap = document.getElementById('open-sites-wrap');
   if (!wrap) return;
+  sites = (sites || []).filter(function(site) {
+    return !_selectedProject || site.project === _selectedProject;
+  });
   if (!sites || !sites.length) {
     wrap.style.display = 'none';
     wrap.innerHTML = '';
@@ -2051,8 +2021,8 @@ function selectProject(name) {
   document.querySelectorAll('.project-card').forEach(function(c) {
     c.classList.toggle('selected', c.querySelector('.project-card-name').textContent === name);
   });
-  var btn = document.getElementById('btn-start-doc');
-  if (btn) btn.disabled = !APP.siteNumber;
+  renderOpenSites(APP.openSites);
+  updateStartButton();
 }
 async function openExistingSite(siteNumber, project) {
   APP.siteNumber = siteNumber;
