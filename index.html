@@ -1502,7 +1502,8 @@ const CONFIG = {
   STATE_STORE: 'app_state',
   MAX_PHOTO_BYTES: 2 * 1024 * 1024,
   PHOTO_MAX_PX: 2560,
-  UPLOAD_CONCURRENCY: 3,
+  PHOTO_PREP_CONCURRENCY: 2,
+  UPLOAD_CONCURRENCY: 4,
 };
 
 // ════════════════════════════════════════════════════
@@ -2465,9 +2466,20 @@ document.getElementById('camera-input').addEventListener('change', async functio
   const { key, cat, sub } = _currentCapture;
   if (!APP.photos[key]) APP.photos[key] = [];
 
-  for (const file of files) {
-    await processAndQueuePhoto(file, key, cat, sub);
-  }
+  let nextFile = 0;
+  const workerCount = Math.min(CONFIG.PHOTO_PREP_CONCURRENCY, files.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextFile < files.length) {
+      const file = files[nextFile++];
+      try {
+        await processAndQueuePhoto(file, key, cat, sub);
+      } catch (err) {
+        console.error('[PHOTO PREP]', err);
+        toast('Could not prepare: ' + file.name, 'error');
+      }
+    }
+  });
+  await Promise.all(workers);
 
   refreshSubCard(key);
   updateCategoryBadge(cat);
@@ -2478,9 +2490,9 @@ document.getElementById('camera-input').addEventListener('change', async functio
 
 async function processAndQueuePhoto(file, key, cat, sub) {
   const compressed = await compressImageFast(file, CONFIG.PHOTO_MAX_PX, 0.94, CONFIG.MAX_PHOTO_BYTES);
+  const thumbUrl = await createThumbnail(compressed, 400);
   const idx = (APP.photos[key] || []).length + 1;
   const name = formatPhotoName(APP.siteNumber, cat, sub, idx);
-  const thumbUrl = await createThumbnail(compressed, 400);
 
   const id = `${key}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const photoObj = { id, name, blob: compressed, thumbUrl, status: 'queued', driveId: null };
@@ -2532,65 +2544,79 @@ function canvasToBlob(canvas, quality) {
   });
 }
 
-function compressImageFast(file, maxPx, quality, maxBytes) {
-  return new Promise((resolve) => {
-    const isJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg';
-    if (isJpeg && file.size <= maxBytes) {
-      resolve(file);
-      return;
+async function compressImageFast(file, maxPx, quality, maxBytes) {
+  const isJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg';
+  if (isJpeg && file.size <= maxBytes) return file;
+
+  let image;
+  let objectUrl = '';
+  try {
+    if ('createImageBitmap' in window) {
+      try {
+        image = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      } catch (_) {
+        image = await createImageBitmap(file);
+      }
+    }
+    if (!image) {
+      image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        objectUrl = URL.createObjectURL(file);
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = objectUrl;
+      });
     }
 
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    let width = image.width;
+    let height = image.height;
+    if (width > maxPx || height > maxPx) {
+      const scale = maxPx / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
 
-    img.onload = async () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > maxPx || height > maxPx) {
-        if (width > height) { height = Math.round((height / width) * maxPx); width = maxPx; }
-        else                { width  = Math.round((width / height) * maxPx); height = maxPx; }
-      }
-
-      const canvas = document.createElement('canvas');
+    const canvas = document.createElement('canvas');
+    const encode = async (jpegQuality) => {
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-
-      let bestBlob = null;
-      let currentQuality = quality;
-      for (let attempt = 0; attempt < 12; attempt++) {
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const blob = await canvasToBlob(canvas, currentQuality);
-        if (blob) bestBlob = blob;
-        if (blob && blob.size <= maxBytes) {
-          resolve(blob);
-          return;
-        }
-
-        if (currentQuality > 0.82) currentQuality -= 0.04;
-        else {
-          if (Math.max(width, height) > 1400) {
-            width = Math.round(width * 0.9);
-            height = Math.round(height * 0.9);
-            currentQuality = 0.88;
-          } else {
-            currentQuality = Math.max(0.74, currentQuality - 0.04);
-          }
-        }
-      }
-
-      resolve(bestBlob || file);
+      ctx.drawImage(image, 0, 0, width, height);
+      return await canvasToBlob(canvas, jpegQuality);
     };
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
-    };
-    img.src = url;
-  });
+    let currentQuality = quality;
+    let blob = await encode(currentQuality);
+    if (blob && blob.size <= maxBytes) return blob;
+
+    // Estimate the needed pixel reduction from the first JPEG instead of
+    // repeatedly encoding the same full-size canvas.
+    if (blob) {
+      const scale = Math.max(0.72, Math.min(0.96, Math.sqrt(maxBytes / blob.size) * 0.98));
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
+      currentQuality = 0.92;
+      blob = await encode(currentQuality);
+      if (blob && blob.size <= maxBytes) return blob;
+    }
+
+    // Keep quality high and adapt dimensions directly for detailed photos.
+    for (let attempt = 0; blob && blob.size > maxBytes && attempt < 5; attempt++) {
+      const scale = Math.max(0.78, Math.min(0.94, Math.sqrt(maxBytes / blob.size) * 0.97));
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
+      blob = await encode(attempt < 2 ? 0.90 : 0.86);
+    }
+    return blob || file;
+  } catch (err) {
+    console.warn('[COMPRESS]', err);
+    return file;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    if (image && typeof image.close === 'function') image.close();
+  }
 }
 
 function compressImage(file, maxPx, quality) {
