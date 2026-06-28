@@ -709,10 +709,18 @@
     .photo-count-fill.done { background: var(--success); }
     .photo-thumbnails { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     .thumb-wrap { position: relative; width: 56px; height: 56px; }
-    .thumb-wrap img {
+    .thumb-wrap img, .drive-thumb {
       width: 100%; height: 100%; object-fit: cover;
       border-radius: 8px; border: 1.5px solid var(--border);
     }
+    .drive-thumb {
+      display: flex; align-items: center; justify-content: center;
+      background: #22457f center / cover no-repeat;
+      color: #fff; font-size: 24px; cursor: pointer;
+      padding: 0;
+    }
+    .drive-thumb.loading { opacity: 0.72; }
+    .drive-thumb.loaded span { display: none; }
     .thumb-del {
       position: absolute; top: -6px; right: -6px;
       width: 20px; height: 20px;
@@ -1654,7 +1662,7 @@ async function saveState() {
         name: p.name,
         status: p.status,
         driveId: p.driveId || null,
-        thumbUrl: p.driveId ? (p.thumbUrl || null) : null
+        thumbUrl: p.driveId && p.thumbUrl && !p.thumbUrl.startsWith('data:') ? p.thumbUrl : null
       }))])
     ),
   });
@@ -1747,7 +1755,9 @@ let _viewerLoadToken = 0;
 function closeImgViewer() {
   _viewerLoadToken++;
   document.getElementById('img-viewer').classList.remove('show');
-  document.getElementById('img-viewer-src').src = '';
+  const viewerImage = document.getElementById('img-viewer-src');
+  viewerImage.onerror = null;
+  viewerImage.src = '';
 }
 function openImgViewer(src) {
   document.getElementById('img-viewer-src').src = src;
@@ -1770,15 +1780,11 @@ async function openPhotoViewer(encodedKey, encodedPhotoId) {
     if (photo.blob) {
       fullSrc = await blobToDataURL(photo.blob);
     } else if (photo.driveId) {
-      const res = await gasCall('getPhotoData', {
-        fileId: photo.driveId,
-        siteNumber: APP.siteNumber,
-        project: APP.project || '',
-        userEmail: APP.user ? APP.user.email : ''
-      });
-      if (res && res.success && res.base64Data) {
-        fullSrc = 'data:' + (res.mimeType || 'image/jpeg') + ';base64,' + res.base64Data;
-      }
+      fullSrc = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(photo.driveId) + '&sz=w2000&v=public1';
+      viewerImage.onerror = () => {
+        viewerImage.onerror = null;
+        loadFullPhotoFallback(photo, token, viewerImage);
+      };
     }
     if (token === _viewerLoadToken && fullSrc) viewerImage.src = fullSrc;
     if (!fullSrc) throw new Error('Full image unavailable');
@@ -1786,6 +1792,100 @@ async function openPhotoViewer(encodedKey, encodedPhotoId) {
     if (token === _viewerLoadToken) toast('Could not load the full photo.', 'error');
   } finally {
     if (token === _viewerLoadToken) viewerImage.style.opacity = '1';
+  }
+}
+
+async function loadFullPhotoFallback(photo, token, viewerImage) {
+  if (token !== _viewerLoadToken) return;
+  viewerImage.style.opacity = '0.65';
+  try {
+    const res = await gasCall('getPhotoData', {
+      fileId: photo.driveId,
+      siteNumber: APP.siteNumber,
+      project: APP.project || '',
+      userEmail: APP.user ? APP.user.email : ''
+    });
+    if (!res || !res.success || !res.base64Data) throw new Error('Full image unavailable');
+    if (token === _viewerLoadToken) {
+      viewerImage.src = 'data:' + (res.mimeType || 'image/jpeg') + ';base64,' + res.base64Data;
+    }
+  } catch(e) {
+    if (token === _viewerLoadToken) toast('Could not load the full photo.', 'error');
+  } finally {
+    if (token === _viewerLoadToken) viewerImage.style.opacity = '1';
+  }
+}
+
+let _thumbnailLoadScheduled = false;
+let _thumbnailLoadRunning = false;
+
+function handlePublicThumbnailError(image) {
+  if (!image || !image.parentNode) return;
+  image.onerror = null;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'drive-thumb';
+  button.dataset.driveId = image.dataset.driveId || '';
+  button.dataset.photoKey = image.dataset.photoKey || '';
+  button.dataset.photoId = image.dataset.photoId || '';
+  button.setAttribute('aria-label', image.alt || 'Photo');
+  button.innerHTML = '<span>📷</span>';
+  button.onclick = () => openPhotoViewer(button.dataset.photoKey, button.dataset.photoId);
+  image.replaceWith(button);
+  scheduleDriveThumbnailLoad();
+}
+
+function scheduleDriveThumbnailLoad() {
+  if (_thumbnailLoadScheduled) return;
+  _thumbnailLoadScheduled = true;
+  setTimeout(() => {
+    _thumbnailLoadScheduled = false;
+    loadVisibleDriveThumbnails();
+  }, 60);
+}
+
+async function loadVisibleDriveThumbnails() {
+  if (_thumbnailLoadRunning || !APP.isOnline) return;
+  const activePage = document.querySelector('.cat-page.active');
+  if (!activePage) return;
+  const buttons = Array.from(activePage.querySelectorAll('.drive-thumb:not(.loaded):not([data-thumb-attempted])')).slice(0, 12);
+  if (!buttons.length) return;
+
+  _thumbnailLoadRunning = true;
+  buttons.forEach(button => {
+    button.classList.add('loading');
+    button.dataset.thumbAttempted = '1';
+  });
+
+  try {
+    const res = await gasCall('getPhotoThumbnails', {
+      fileIds: buttons.map(button => button.dataset.driveId),
+      siteNumber: APP.siteNumber,
+      project: APP.project || '',
+      userEmail: APP.user ? APP.user.email : ''
+    });
+    const thumbnails = (res && res.thumbnails) || {};
+    buttons.forEach(button => {
+      const fileId = button.dataset.driveId;
+      const data = thumbnails[fileId];
+      button.classList.remove('loading');
+      if (!data || !data.base64Data) return;
+      const src = 'data:' + (data.mimeType || 'image/jpeg') + ';base64,' + data.base64Data;
+      button.style.backgroundImage = `url("${src}")`;
+      button.classList.add('loaded');
+      const key = decodeURIComponent(button.dataset.photoKey || '');
+      const photoId = decodeURIComponent(button.dataset.photoId || '');
+      const photo = (APP.photos[key] || []).find(p => p.id === photoId);
+      if (photo) photo.thumbUrl = src;
+    });
+  } catch(e) {
+    buttons.forEach(button => button.classList.remove('loading'));
+    console.warn('[THUMBNAILS]', e.message);
+  } finally {
+    _thumbnailLoadRunning = false;
+    if (activePage.querySelector('.drive-thumb:not(.loaded):not([data-thumb-attempted])')) {
+      scheduleDriveThumbnailLoad();
+    }
   }
 }
 
@@ -1815,6 +1915,7 @@ window.addEventListener('online', async () => {
   document.getElementById('offline-banner').classList.remove('show');
   toast('Connection restored - resuming upload...', 'success', 3000);
   await restorePendingBlobs();
+  scheduleDriveThumbnailLoad();
   setTimeout(() => processUploadQueue(), 1500);
 });
 
@@ -2439,6 +2540,7 @@ function showCatPage(idx, shouldScroll) {
   }
 
   if (shouldScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+  scheduleDriveThumbnailLoad();
 }
 
 function catNavNext() {
@@ -2554,9 +2656,15 @@ function buildSubCard(cat, sub) {
     const thumbSrc = p.thumbUrl || '';
     const viewerKey = encodeURIComponent(key).replace(/'/g, '%27');
     const viewerPhotoId = encodeURIComponent(p.id).replace(/'/g, '%27');
+    const usePublicDriveThumbnail = !!p.driveId && (!thumbSrc || thumbSrc.includes('drive.google.com'));
+    const publicThumbSrc = p.driveId
+      ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(p.driveId)}&sz=w400&v=public1`
+      : '';
     return `
       <div class="thumb-wrap">
-        ${thumbSrc
+        ${usePublicDriveThumbnail
+          ? `<img src="${publicThumbSrc}" alt="Photo ${i+1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-drive-id="${p.driveId}" data-photo-key="${viewerKey}" data-photo-id="${viewerPhotoId}" onerror="handlePublicThumbnailError(this)" onclick="openPhotoViewer('${viewerKey}','${viewerPhotoId}')" />`
+          : thumbSrc
           ? `<img src="${thumbSrc}" alt="Photo ${i+1}" loading="lazy" decoding="async" onclick="openPhotoViewer('${viewerKey}','${viewerPhotoId}')" />`
           : `<div style="width:56px;height:56px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;">📷</div>`}
         ${p.status !== 'done' ? `<button class="thumb-del" onclick="removePhoto('${key}',${i})">✕</button>` : ''}
@@ -3344,6 +3452,7 @@ function refreshSubCard(key) {
   const subDef  = catSubs.find(s => s.subcategory === sub);
   if (!subDef) return;
   el.replaceWith(buildSubCard(cat, subDef));
+  scheduleDriveThumbnailLoad();
 }
 
 function updateCategoryBadge(cat) {
