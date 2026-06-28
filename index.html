@@ -1549,6 +1549,11 @@ let APP = {
   db: null,
 };
 
+let _realtimeSyncTimer = null;
+let _realtimeSyncBusy = false;
+let _realtimeClosedNotice = false;
+let _isSubmittingProject = false;
+
 // ════════════════════════════════════════════════════
 //  INDEXEDDB
 // ════════════════════════════════════════════════════
@@ -1917,6 +1922,7 @@ window.addEventListener('online', async () => {
   await restorePendingBlobs();
   scheduleDriveThumbnailLoad();
   setTimeout(() => processUploadQueue(), 1500);
+  setTimeout(() => runRealtimeSync(), 500);
 });
 
 window.addEventListener('offline', () => {
@@ -2147,6 +2153,7 @@ async function checkApproval() {
 function handleLogout() {
   if (!confirm('Log out?')) return;
   clearPoll();
+  stopRealtimeSync();
   APP.user       = null;
   APP.siteNumber = null;
   APP.project=null;
@@ -2167,6 +2174,7 @@ function handleLogout() {
 // ════════════════════════════════════════════════════
 async function initApp() {
   showPage('page-app');
+  startRealtimeSync();
   if (APP.user) {
     document.getElementById('header-user-info').textContent = `Logged in as: ${APP.user.name}`;
   }
@@ -2226,6 +2234,77 @@ async function loadOpenSites() {
   } catch(e) { APP.openSites = []; }
   renderOpenSites(APP.openSites);
 }
+
+function startRealtimeSync() {
+  if (_realtimeSyncTimer) return;
+  _realtimeSyncTimer = setInterval(runRealtimeSync, 10000);
+}
+
+function stopRealtimeSync() {
+  if (_realtimeSyncTimer) clearInterval(_realtimeSyncTimer);
+  _realtimeSyncTimer = null;
+  _realtimeSyncBusy = false;
+}
+
+async function runRealtimeSync() {
+  if (_realtimeSyncBusy || !APP.user || !navigator.onLine || document.hidden) return;
+  var appPage = document.getElementById('page-app');
+  if (!appPage || !appPage.classList.contains('active')) return;
+
+  _realtimeSyncBusy = true;
+  try {
+    if (APP.siteNumber && APP.project) {
+      var res = await gasCall('getSiteStatus', {
+        siteNumber: APP.siteNumber,
+        project: APP.project,
+        email: APP.user.email
+      });
+      if (res && res.open === false && String(res.status).toLowerCase() === 'completed') {
+        await handleRealtimeSiteClosed();
+      } else if (res && res.open) {
+        _realtimeClosedNotice = false;
+      }
+    } else {
+      var openRes = await gasCall('getOpenSites', { email: APP.user.email });
+      if (openRes && Array.isArray(openRes.sites)) {
+        APP.openSites = openRes.sites;
+        renderOpenSites(APP.openSites);
+      }
+    }
+  } catch(e) {
+    console.warn('[REALTIME SYNC]', e.message);
+  } finally {
+    _realtimeSyncBusy = false;
+  }
+}
+
+async function handleRealtimeSiteClosed() {
+  if (_isSubmittingProject || !APP.siteNumber) return;
+  if (hasPendingUploads()) {
+    if (!_realtimeClosedNotice) {
+      _realtimeClosedNotice = true;
+      toast('This job was completed. Finishing your pending uploads first.', 'warning', 5000);
+    }
+    processUploadQueue();
+    return;
+  }
+
+  var closedSite = APP.siteNumber;
+  APP.siteNumber = null;
+  APP.project = null;
+  APP.photos = {};
+  APP.naStatus = {};
+  APP.uploadQueue = [];
+  _selectedProject = null;
+  _realtimeClosedNotice = false;
+  await saveState();
+  toast('Site_' + closedSite + ' was completed by another user.', 'info', 5000);
+  await initApp();
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) runRealtimeSync();
+});
 function renderOpenSites(sites) {
   var wrap = document.getElementById('open-sites-wrap');
   if (!wrap) return;
@@ -3530,6 +3609,7 @@ async function handleSubmit() {
   if (!allDone) { toast('Not all required photos are uploaded yet.', 'error'); return; }
   if (hasPendingUploads()) { toast('Upload still in progress. Please wait.', 'warning'); return; }
 
+  _isSubmittingProject = true;
   showSpinner('Submitting project...');
   try {
     const res = await gasCall('submitProject', {
@@ -3562,7 +3642,10 @@ async function handleSubmit() {
     }
   } catch(e) {
     toast('Unable to submit. Check connection.', 'error');
-  } finally { hideSpinner(); }
+  } finally {
+    _isSubmittingProject = false;
+    hideSpinner();
+  }
 }
 
 async function startNewProject(){APP.siteNumber=null;APP.project=null;APP.photos={};APP.naStatus={};APP.uploadQueue=[];if(typeof _selectedProject!=='undefined')_selectedProject=null;await saveState();showPage('page-app');initApp();}
