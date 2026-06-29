@@ -663,6 +663,20 @@
     .btn-cat-next:active { background: var(--brand-dark); }
     .btn-cat-next.complete { background: var(--success); }
     .btn-cat-next:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-cat-next.submitting {
+      background: #1688b8;
+      opacity: 1;
+      cursor: wait;
+      pointer-events: none;
+      min-height: 48px;
+    }
+    .btn-submit-spinner {
+      width: 18px; height: 18px; flex: 0 0 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
 
     .category-section {
       background: var(--surface);
@@ -1146,7 +1160,7 @@
       border-radius: 50%; animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-label { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+    .spinner-label { font-size: 16px; color: #fff; font-weight: 700; }
 
         /* ── RESPONSIVE ── */
     @media (min-width: 768px) {
@@ -3605,11 +3619,45 @@ function updateSubmitButton() {
   if (catNames.length > 0) showCatPage(_currentCatIndex, false);
 }
 
+function setSubmitUi(isSubmitting, label) {
+  const btn = document.getElementById('btn-next');
+  if (!btn) return;
+  if (isSubmitting) {
+    btn.disabled = true;
+    btn.onclick = null;
+    btn.className = 'btn-cat-next submitting';
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="btn-submit-spinner" aria-hidden="true"></span><span>' +
+      (label || 'Submitting...') + '</span>';
+    return;
+  }
+
+  btn.classList.remove('submitting');
+  btn.removeAttribute('aria-busy');
+  if (APP.siteNumber && APP.project) updateSubmitButton();
+}
+
+function waitForUiPaint() {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
 // ════════════════════════════════════════════════════
 //  SUBMIT
 // ════════════════════════════════════════════════════
 async function handleSubmit() {
-  await syncSiteState();
+  if (_isSubmittingProject) return;
+  _isSubmittingProject = true;
+  setSubmitUi(true, 'Checking...');
+  showSpinner('Checking uploaded photos...');
+  const submitSlowTimer = setTimeout(() => {
+    if (!_isSubmittingProject) return;
+    setSubmitUi(true, 'Still closing...');
+    showSpinner('Still closing the job. Please wait...');
+  }, 8000);
+
+  try {
+    // Paint feedback before validation and the single submit request.
+    await waitForUiPaint();
   // Final validation
   const groups = getCategoryGroups();
   let allDone  = true;
@@ -3631,9 +3679,8 @@ async function handleSubmit() {
   if (!allDone) { toast('Not all required photos are uploaded yet.', 'error'); return; }
   if (hasPendingUploads()) { toast('Upload still in progress. Please wait.', 'warning'); return; }
 
-  _isSubmittingProject = true;
-  showSpinner('Submitting project...');
-  try {
+  setSubmitUi(true, 'Closing job...');
+  showSpinner('Closing job...');
     const res = await gasCall('submitProject', {
       siteNumber: APP.siteNumber, project: APP.project||'',
       userName: APP.user?APP.user.name:'', userEmail: APP.user?APP.user.email:'',
@@ -3665,8 +3712,10 @@ async function handleSubmit() {
   } catch(e) {
     toast('Unable to submit: ' + (e && e.message ? e.message : 'Check connection.'), 'error', 7000);
   } finally {
+    clearTimeout(submitSlowTimer);
     _isSubmittingProject = false;
     hideSpinner();
+    setSubmitUi(false);
   }
 }
 
