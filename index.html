@@ -885,6 +885,31 @@
     }
     .btn-na:active, .btn-na:hover { background: var(--na-bg); }
 
+    .category-na-control {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 0 0 14px;
+    }
+    .btn-category-na {
+      background: transparent; color: var(--na);
+      border: 1.5px solid var(--na-border);
+      border-radius: var(--radius);
+      min-height: 42px; padding: 10px 14px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .btn-category-na:active { background: var(--na-bg); }
+    .category-na-control.all-na {
+      justify-content: space-between; gap: 12px;
+      background: var(--na-bg); border: 1px solid var(--na-border);
+      border-radius: var(--radius); padding: 10px 12px; margin-bottom: 14px;
+      color: var(--na); font-size: 13px; font-weight: 700;
+    }
+    .category-na-undo {
+      background: none; border: none; color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      text-decoration: underline; padding: 6px 0; flex-shrink: 0;
+    }
+
     /* ── N/A BANNER ── */
     .na-banner {
       display: flex; align-items: center; gap: 10px;
@@ -1487,20 +1512,20 @@
 <div class="modal-overlay" id="modal-na">
   <div class="modal">
     <div class="na-confirm-icon">⚠️</div>
-    <div class="na-confirm-title">Mark as Not Applicable?</div>
+    <div class="na-confirm-title" id="na-modal-title">Mark as Not Applicable?</div>
     <div class="na-confirm-context">
-      <div class="cat-label">Category / Subcategory</div>
+      <div class="cat-label" id="na-modal-label">Category / Subcategory</div>
       <div class="sub-label" id="na-modal-sub">-</div>
       <div class="cat-parent" id="na-modal-cat">-</div>
     </div>
-    <p class="na-warning-text">
+    <p class="na-warning-text" id="na-modal-warning">
       Marking this as <strong>N/A (Not Applicable)</strong> means this item is
       <strong>not present on site</strong> and no photos are required.<br><br>
       This decision will be recorded in the project audit trail with your name,
       date and time.
     </p>
     <div class="na-confirm-btns">
-      <button class="btn-na-confirm" onclick="confirmNA()">✕ Confirm - Not Present on Site</button>
+      <button class="btn-na-confirm" id="na-modal-confirm" onclick="confirmNA()">✕ Confirm - Not Present on Site</button>
       <button class="btn btn-ghost" onclick="closeModal('modal-na')">Cancel</button>
     </div>
   </div>
@@ -1556,6 +1581,7 @@ let APP = {
   categoriesProject: null,
   photos: {},
   naStatus: {},
+  naSyncQueue: [],
   isOnline: navigator.onLine,
   uploadQueue: [],
   activeUploadIds: new Set(),
@@ -1674,6 +1700,7 @@ async function saveState() {
     categories: APP.categories,
     categoriesProject: APP.categoriesProject,
     naStatus: APP.naStatus,
+    naSyncQueue: APP.naSyncQueue,
     // Save photo metadata (not blobs - those stay in PHOTO_STORE)
     photosMeta: Object.fromEntries(
       Object.entries(APP.photos).map(([k, arr]) => [k, arr.map(p => ({
@@ -1697,6 +1724,7 @@ async function loadState() {
   APP.categories = s.categories || [];
   APP.categoriesProject = s.categoriesProject || (APP.categories.length ? APP.project : null);
   APP.naStatus = s.naStatus || {};
+  APP.naSyncQueue = s.naSyncQueue || [];
   // Restore photo metadata + reload blobs
   const allPending = await dbGetPhotoMetadata();
   const blobMap = {};
@@ -1933,6 +1961,7 @@ window.addEventListener('online', async () => {
   document.getElementById('offline-banner').classList.remove('show');
   toast('Connection restored - resuming upload...', 'success', 3000);
   await restorePendingBlobs();
+  flushNAChanges();
   scheduleDriveThumbnailLoad();
   setTimeout(() => processUploadQueue(), 1500);
   setTimeout(() => runRealtimeSync(), 500);
@@ -2210,6 +2239,7 @@ function handleLogout() {
 async function initApp() {
   showPage('page-app');
   startRealtimeSync();
+  flushNAChanges();
   if (APP.user) {
     document.getElementById('header-user-info').textContent = `Logged in as: ${APP.user.name}`;
   }
@@ -2675,6 +2705,8 @@ function buildCategoryPage(cat, subs, idx) {
   const done    = subs.filter(s => isSubComplete(cat, s)).length;
   const allDone = done === total;
   const naDone  = subs.filter(s => APP.naStatus[photoKey(cat, s.subcategory)]).length;
+  const allNA   = total > 0 && naDone === total;
+  const catEsc  = cat.replace(/'/g, "\\'");
 
   let badgeClass = '';
   if (allDone)         badgeClass = 'complete';
@@ -2701,7 +2733,15 @@ function buildCategoryPage(cat, subs, idx) {
   subList.className = 'subcategory-list';
   subList.id = 'sublist-' + idx;
 
+  const categoryNAControl = document.createElement('div');
+  categoryNAControl.className = 'category-na-control' + (allNA ? ' all-na' : '');
+  categoryNAControl.innerHTML = allNA
+    ? '<span>Entire category is N/A</span>' +
+      '<button class="category-na-undo" onclick="undoCategoryNA(\'' + catEsc + '\')">Undo category N/A</button>'
+    : '<button class="btn-category-na" onclick="promptCategoryNA(\'' + catEsc + '\')">✕ Mark entire category N/A</button>';
+
   page.appendChild(hdr);
+  page.appendChild(categoryNAControl);
   page.appendChild(subList);
   subs.forEach(s => subList.appendChild(buildSubCard(cat, s)));
 
@@ -3209,20 +3249,57 @@ function driveUrlToOpen(url) {
 // ════════════════════════════════════════════════════
 //  N/A WORKFLOW
 // ════════════════════════════════════════════════════
-let _pendingNA = null; // { key, cat, sub }
+let _pendingNA = null; // single subcategory or entire category
 
 function promptNA(key, cat, sub) {
-  _pendingNA = { key, cat, sub };
+  _pendingNA = { type: 'item', key, cat, sub };
+  document.getElementById('na-modal-title').textContent = 'Mark as Not Applicable?';
+  document.getElementById('na-modal-label').textContent = 'Category / Subcategory';
   document.getElementById('na-modal-sub').textContent = sub;
   document.getElementById('na-modal-cat').textContent = cat;
+  document.getElementById('na-modal-warning').innerHTML =
+    'Marking this as <strong>N/A (Not Applicable)</strong> means this item is ' +
+    '<strong>not present on site</strong> and no photos are required.<br><br>' +
+    'This decision will be recorded in the project audit trail with your name, date and time.';
+  document.getElementById('na-modal-confirm').textContent = '✕ Confirm - Not Present on Site';
+  showModal('modal-na');
+}
+
+function promptCategoryNA(cat) {
+  const subs = getCategoryGroups()[cat] || [];
+  if (!subs.length) return;
+  _pendingNA = {
+    type: 'category',
+    cat,
+    items: subs.map(s => ({
+      key: photoKey(cat, s.subcategory),
+      category: cat,
+      subcategory: s.subcategory
+    }))
+  };
+  document.getElementById('na-modal-title').textContent = 'Mark entire category as N/A?';
+  document.getElementById('na-modal-label').textContent = 'Entire category';
+  document.getElementById('na-modal-sub').textContent = cat;
+  document.getElementById('na-modal-cat').textContent = subs.length + ' subcategories';
+  document.getElementById('na-modal-warning').innerHTML =
+    'All subcategories in this category will be marked <strong>N/A</strong> and no photos will be required. ' +
+    'You can undo the entire category afterward.';
+  document.getElementById('na-modal-confirm').textContent = '✕ Confirm N/A for entire category';
   showModal('modal-na');
 }
 
 async function confirmNA() {
   if (!_pendingNA) return;
-  const { key, cat, sub } = _pendingNA;
+  const pending = _pendingNA;
   _pendingNA = null;
   closeModal('modal-na');
+
+  if (pending.type === 'category') {
+    await applyCategoryNA(pending);
+    return;
+  }
+
+  const { key, cat, sub } = pending;
 
   const now = new Date().toISOString();
   APP.naStatus[key] = {
@@ -3234,39 +3311,103 @@ async function confirmNA() {
     siteNumber: APP.siteNumber,
   };
 
-  refreshSubCard(key);
-  updateCategoryBadge(cat);
+  renderCategories();
   updateOverallProgress();
-  updateSubmitButton();
   await saveState();
 
   toast(`Marked N/A: ${sub}`, 'warning', 3000);
 
-  // Fire-and-forget audit log to GAS (non-blocking)
-  if (APP.isOnline) {
-    gasCall('logNA', {
-      siteNumber:  APP.siteNumber,
-      project:     APP.project || '',
-      category:    cat,
-      subcategory: sub,
-      userName:    APP.user?.name  || '',
-      userEmail:   APP.user?.email || '',
-      markedAt:    now,
-      status:      'N/A',
-    }).catch(() => {
-      // Will be re-sent on submit if offline - non-critical here
+  logNAChanges([{ category: cat, subcategory: sub }], 'N/A', now);
+}
+
+async function applyCategoryNA(pending) {
+  const now = new Date().toISOString();
+  const changed = [];
+  pending.items.forEach(item => {
+    if (!APP.naStatus[item.key]) changed.push({
+      category: item.category,
+      subcategory: item.subcategory
     });
+    APP.naStatus[item.key] = {
+      markedAt: now,
+      markedBy: APP.user?.name || '',
+      markedEmail: APP.user?.email || '',
+      category: item.category,
+      subcategory: item.subcategory,
+      siteNumber: APP.siteNumber,
+    };
+  });
+
+  renderCategories();
+  updateOverallProgress();
+  await saveState();
+  toast(`Entire category marked N/A: ${pending.cat}`, 'warning', 3500);
+  if (changed.length) logNAChanges(changed, 'N/A', now);
+}
+
+let _naSyncRunning = false;
+
+function logNAChanges(items, status, markedAt) {
+  if (!items || !items.length) return;
+  APP.naSyncQueue.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    siteNumber: APP.siteNumber,
+    project: APP.project || '',
+    items,
+    userName: APP.user?.name || '',
+    userEmail: APP.user?.email || '',
+    markedAt: markedAt || new Date().toISOString(),
+    status,
+  });
+  saveState().catch(() => {});
+  flushNAChanges();
+}
+
+async function flushNAChanges() {
+  if (_naSyncRunning || !APP.isOnline || !APP.naSyncQueue.length) return;
+  _naSyncRunning = true;
+  try {
+    while (APP.isOnline && APP.naSyncQueue.length) {
+      const change = APP.naSyncQueue[0];
+      const res = await gasCall('logNA', change);
+      if (!res || !res.success) throw new Error((res && (res.message || res.error)) || 'N/A sync failed');
+      APP.naSyncQueue.shift();
+      await saveState();
+    }
+  } catch(e) {
+    console.warn('[N/A SYNC]', e.message);
+  } finally {
+    _naSyncRunning = false;
   }
 }
 
 async function undoNA(key, cat, sub) {
+  const now = new Date().toISOString();
   delete APP.naStatus[key];
-  refreshSubCard(key);
-  updateCategoryBadge(cat);
+  renderCategories();
   updateOverallProgress();
-  updateSubmitButton();
   await saveState();
+  logNAChanges([{ category: cat, subcategory: sub }], 'Active', now);
   toast(`N/A removed: ${sub}`, 'info', 2500);
+}
+
+async function undoCategoryNA(cat) {
+  const subs = getCategoryGroups()[cat] || [];
+  const removed = [];
+  subs.forEach(sub => {
+    const key = photoKey(cat, sub.subcategory);
+    if (!APP.naStatus[key]) return;
+    delete APP.naStatus[key];
+    removed.push({ category: cat, subcategory: sub.subcategory });
+  });
+  if (!removed.length) return;
+
+  const now = new Date().toISOString();
+  renderCategories();
+  updateOverallProgress();
+  await saveState();
+  logNAChanges(removed, 'Active', now);
+  toast(`Category N/A removed: ${cat}`, 'info', 3000);
 }
 
 // When camera is opened on an N/A subcategory, clear the N/A flag first
@@ -3274,9 +3415,10 @@ function openCamera(key, cat, sub, required) {
   if (APP.naStatus[key]) {
     // Override: clear N/A and proceed to camera
     delete APP.naStatus[key];
-    refreshSubCard(key);
-    updateCategoryBadge(cat);
+    renderCategories();
     updateOverallProgress();
+    saveState().catch(() => {});
+    logNAChanges([{ category: cat, subcategory: sub }], 'Active', new Date().toISOString());
   }
   _currentCapture = { key, cat, sub, required };
   const input = document.getElementById('camera-input');
