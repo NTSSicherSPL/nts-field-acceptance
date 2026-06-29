@@ -1920,10 +1920,9 @@ function photoKey(cat, sub) { return `${cat}|||${sub}`; }
 function formatSiteName(siteNumber) { return `Site_${siteNumber}`; }
 function formatPhotoName(siteNumber, cat, sub, idx) {
   const s = slugify(siteNumber);
-  const c = slugify(cat);
   const sb = slugify(sub);
   const n = String(idx).padStart(3, '0');
-  return `${s}_${c}_${sb}_${n}.jpg`;
+  return `${s}_${sb}_${n}.jpg`;
 }
 
 // ════════════════════════════════════════════════════
