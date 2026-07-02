@@ -3191,7 +3191,7 @@ function showInfoModal(cat, sub) {
 
   // Sample images from Google Drive
   if (subDef.imageUrls && subDef.imageUrls.trim()) {
-    const urls = subDef.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
+    const urls = parseSampleImageUrls(subDef.imageUrls);
     if (urls.length > 0) {
       const _lbl = document.createElement('div');
       _lbl.className = 'info-images-label';
@@ -3202,16 +3202,17 @@ function showInfoModal(cat, sub) {
       urls.forEach((url, i) => {
         const embedUrl = driveUrlToEmbed(url);
         const openUrl  = typeof driveUrlToOpen === 'function' ? driveUrlToOpen(url) : url;
+        const fileId   = extractDriveFileId(url);
         const wrap = document.createElement('div');
         wrap.className = 'info-img-wrap';
-        wrap.onclick = () => window.open(openUrl, '_blank');
         const img = document.createElement('img');
         img.alt = 'Sample ' + (i + 1);
         img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        wrap.onclick = () => { if (img.src) openImgViewer(img.src); };
         img.onerror = function() {
-          wrap.innerHTML = '<div class="info-img-error" style="cursor:pointer" onclick="event.stopPropagation();window.open(\'' + openUrl + '\',\'_blank\')">' +
-            '<div style="font-size:24px;margin-bottom:4px">🖼️</div>' +
-            '<div style="font-size:10px;color:var(--brand)">Open in Drive</div></div>';
+          loadSampleImageFallback(img, wrap, fileId, openUrl);
         };
         img.src = embedUrl;
         wrap.appendChild(img);
@@ -3224,14 +3225,59 @@ function showInfoModal(cat, sub) {
   showModal('modal-info');
 }
 
+async function loadSampleImageFallback(img, wrap, fileId, openUrl) {
+  if (!fileId || img.dataset.fallbackAttempted === '1') {
+    showSampleImageError(wrap, openUrl);
+    return;
+  }
+  img.dataset.fallbackAttempted = '1';
+  try {
+    const res = await gasCall('getSampleImages', {
+      project: APP.project || '',
+      userEmail: APP.user ? APP.user.email : '',
+      fileIds: [fileId],
+    });
+    const sample = res && res.images ? res.images[fileId] : null;
+    if (!sample || !sample.base64Data) throw new Error('Sample image unavailable');
+    img.onerror = () => showSampleImageError(wrap, openUrl);
+    img.src = 'data:' + (sample.mimeType || 'image/jpeg') + ';base64,' + sample.base64Data;
+  } catch(e) {
+    showSampleImageError(wrap, openUrl);
+  }
+}
+
+function showSampleImageError(wrap, openUrl) {
+  wrap.innerHTML = '';
+  wrap.onclick = () => window.open(openUrl, '_blank');
+  const error = document.createElement('div');
+  error.className = 'info-img-error';
+  error.style.cursor = 'pointer';
+  error.innerHTML = '<div style="font-size:24px;margin-bottom:4px">🖼️</div>' +
+    '<div style="font-size:10px;color:var(--brand)">Open in Drive</div>';
+  wrap.appendChild(error);
+}
+
+function extractDriveFileId(url) {
+  const value = String(url || '').trim();
+  const match = value.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+    || value.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+    || value.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  return /^[a-zA-Z0-9_-]{20,}$/.test(value) ? value : '';
+}
+
+function parseSampleImageUrls(value) {
+  const text = String(value || '').trim();
+  const urls = text.match(/https?:\/\/[^\s,;]+/g);
+  return urls && urls.length ? urls : text.split(/[\s,;]+/).filter(Boolean);
+}
+
 function driveUrlToEmbed(url) {
   // Convert various Google Drive URL formats to direct image URL
   // Format: https://drive.google.com/file/d/FILE_ID/view
   // Embed:  https://drive.google.com/thumbnail?id=FILE_ID&sz=w600
-  const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return 'https://drive.google.com/uc?export=view&id=' + match[1];
-  }
+  const fileId = extractDriveFileId(url);
+  if (fileId) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w1000&v=public1';
   // Already direct or unknown format - use as-is
   return url;
 }
