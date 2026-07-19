@@ -1278,6 +1278,8 @@
 
 <!-- Hidden camera input -->
 <input type="file" id="camera-input" accept="image/jpeg,image/png,image/heic,image/heif,image/*" capture="environment" multiple style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;" />
+<!-- Hidden phone gallery input (used only for Final Pictures / Service Test Screenshoot) -->
+<input type="file" id="phone-gallery-input" accept="image/jpeg,image/png,image/heic,image/heif,image/*" multiple style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;" />
 
 <!-- ════════════════════════════════════════
      PAGE: ACCESS (landing + request + auto-login)
@@ -2844,6 +2846,14 @@ function buildSubCard(cat, sub) {
   // Action buttons row
   const cameraLabel = isNA ? '📷 Add Photo (Override N/A)' : (complete ? '✅ Complete - Add more' : '📷 Open Camera');
   const cameraBtnCls = `btn-camera${complete && !isNA ? ' complete' : ''}${isNA ? ' style="background:var(--card);color:var(--text-muted);border:1.5px solid var(--border);"' : ''}`;
+  const allowPhoneGallery =
+    cat.trim().toLowerCase() === 'final pictures' &&
+    sub.subcategory.trim().toLowerCase() === 'service test screenshoot';
+  const phoneGalleryBtnHtml = allowPhoneGallery ? `
+      <button class="btn-camera"
+        onclick="openPhoneGallery('${key}','${catEsc}','${subEsc}',${required})">
+        🖼️ Încarcă din telefon
+      </button>` : '';
 
   // N/A button - show always (even when complete, to allow re-marking)
   const naBtnHtml = !isNA ? `
@@ -2879,6 +2889,7 @@ function buildSubCard(cat, sub) {
         onclick="openCamera('${key}','${catEsc}','${subEsc}',${required})">
         ${cameraLabel}
       </button>
+      ${phoneGalleryBtnHtml}
       ${naBtnHtml}
     </div>
     ${!isNA ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
@@ -2904,7 +2915,10 @@ function getUploadStatusText(photos) {
 // ════════════════════════════════════════════════════
 let _currentCapture = null;
 
-document.getElementById('camera-input').addEventListener('change', async function(e) {
+document.getElementById('camera-input').addEventListener('change', handlePhotoInputChange);
+document.getElementById('phone-gallery-input').addEventListener('change', handlePhotoInputChange);
+
+async function handlePhotoInputChange(e) {
   if (!_currentCapture) return;
   const files = Array.from(e.target.files);
   if (!files.length) return;
@@ -2932,7 +2946,7 @@ document.getElementById('camera-input').addEventListener('change', async functio
   updateOverallProgress();
   await saveState();
   processUploadQueue();
-});
+}
 
 async function processAndQueuePhoto(file, key, cat, sub) {
   const compressed = await compressImageFast(file, CONFIG.PHOTO_MAX_PX, 0.94, CONFIG.MAX_PHOTO_BYTES);
@@ -3457,9 +3471,9 @@ async function undoCategoryNA(cat) {
 }
 
 // When camera is opened on an N/A subcategory, clear the N/A flag first
-function openCamera(key, cat, sub, required) {
+function preparePhotoCapture(key, cat, sub, required) {
   if (APP.naStatus[key]) {
-    // Override: clear N/A and proceed to camera
+    // Override: clear N/A and proceed to photo selection
     delete APP.naStatus[key];
     renderCategories();
     updateOverallProgress();
@@ -3467,7 +3481,23 @@ function openCamera(key, cat, sub, required) {
     logNAChanges([{ category: cat, subcategory: sub }], 'Active', new Date().toISOString());
   }
   _currentCapture = { key, cat, sub, required };
+}
+
+function openCamera(key, cat, sub, required) {
+  preparePhotoCapture(key, cat, sub, required);
   const input = document.getElementById('camera-input');
+  input.value = '';
+  input.click();
+}
+
+function openPhoneGallery(key, cat, sub, required) {
+  const isAllowed =
+    String(cat).trim().toLowerCase() === 'final pictures' &&
+    String(sub).trim().toLowerCase() === 'service test screenshoot';
+  if (!isAllowed) return;
+
+  preparePhotoCapture(key, cat, sub, required);
+  const input = document.getElementById('phone-gallery-input');
   input.value = '';
   input.click();
 }
