@@ -1278,7 +1278,7 @@
 
 <!-- Hidden camera input -->
 <input type="file" id="camera-input" accept="image/jpeg,image/png,image/heic,image/heif,image/*" capture="environment" multiple style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;" />
-<!-- Hidden phone gallery input (used only for Final Pictures / Service Test Screenshoot) -->
+<!-- Phone gallery for service tests and antenna / AAU measurements -->
 <input type="file" id="phone-gallery-input" accept="image/jpeg,image/png,image/heic,image/heif,image/*" multiple style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;" />
 
 <!-- ════════════════════════════════════════
@@ -2765,6 +2765,69 @@ function getCatIcon(cat) {
 
 // toggleCategory removed - using page navigation
 
+function allowsPhoneGallery(cat, sub) {
+  const c=String(cat).trim().toLowerCase(), s=String(sub).trim().toLowerCase();
+  return (c==='final pictures' && s==='service test screenshoot') ||
+    (c==='antenna' && /^s[123] (antenna|aau) measurements$/.test(s));
+}
+function isSiteStatusText(cat, sub) {
+  return String(cat).trim().toLowerCase()==='final pictures' && String(sub).trim().toLowerCase()==='info status site';
+}
+function siteStatusDraftKey(cat, sub) {
+  return 'nts.siteStatusDraft.'+JSON.stringify([APP.user?.email||'',APP.project,APP.siteNumber,cat,sub]);
+}
+function buildSiteStatusCard(cat, sub) {
+  const key=photoKey(cat,sub.subcategory), draftKey=siteStatusDraftKey(cat,sub.subcategory);
+  const card=document.createElement('div');card.className='sub-card';card.dataset.key=key;
+  const title=document.createElement('h3');title.textContent=sub.subcategory;card.appendChild(title);
+  const hint=document.createElement('p');hint.textContent='Scrie dacă site-ul este pregătit pentru acceptanță sau ce remedieri mai sunt necesare. Fiecare salvare creează un fișier .txt în Drive.';card.appendChild(hint);
+  const input=document.createElement('textarea');input.rows=6;input.maxLength=20000;input.placeholder='Status site / remedieri de făcut…';input.setAttribute('aria-label','Info Status Site');input.style.cssText='width:100%;box-sizing:border-box;padding:12px;font:16px sans-serif;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text)';
+  const feedback=document.createElement('div');feedback.setAttribute('role','status');
+  try{input.value=localStorage.getItem(draftKey)||'';}catch(e){feedback.textContent='Stocarea locală nu este disponibilă.';}
+  input.addEventListener('input',()=>{try{localStorage.setItem(draftKey,input.value);feedback.textContent='Ciornă păstrată pe telefon.';}catch(e){feedback.textContent='Ciorna nu poate fi păstrată. Salvează textul înainte de a închide.';}});
+  card.appendChild(input);
+  const button=document.createElement('button');button.className='btn-camera';button.textContent='💾 Salvează textul ca .txt';
+  button.addEventListener('click',async()=>{
+    if(!input.value.trim()){feedback.textContent='Introdu informațiile despre site.';return;}
+    button.disabled=true;
+    try{await queueSiteStatusText(input.value,cat,sub.subcategory);if(localStorage.getItem(draftKey)===input.value)localStorage.removeItem(draftKey);input.value='';refreshSubCard(key);toast('Text păstrat pe telefon. Se sincronizează în Drive.','success');}
+    catch(e){feedback.textContent='Salvarea nu a reușit: '+e.message;}
+    finally{button.disabled=false;}
+  });
+  card.appendChild(button);card.appendChild(feedback);
+  const files=(APP.photos[key]||[]).filter(p=>/\.txt$/i.test(p.name));
+  files.slice().reverse().forEach(file=>{
+    const row=document.createElement('div');row.style.cssText='padding:10px 0;overflow-wrap:anywhere';
+    const label=document.createElement('div');label.textContent=file.name+' — '+(file.status==='done'?'Salvat în Drive':getUploadStatusText([file]).text);row.appendChild(label);
+    const view=document.createElement('button');view.textContent='Citește textul';view.className='btn-info';view.style.width='auto';
+    const content=document.createElement('pre');content.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font:14px sans-serif';
+    view.addEventListener('click',async()=>{view.disabled=true;try{
+      const stored=await dbGet(CONFIG.PHOTO_STORE,file.id);
+      if(stored?.blob)content.textContent=await stored.blob.text();
+      else if(file.driveId){const r=await gasCall('getPhotoData',{fileId:file.driveId,siteNumber:APP.siteNumber,project:APP.project||'',userEmail:APP.user?.email||''});if(!r.success||!r.base64Data)throw new Error(r.message||'Text indisponibil');content.textContent=new TextDecoder().decode(Uint8Array.from(atob(r.base64Data),c=>c.charCodeAt(0)));}
+      else throw new Error('Fișierul nu este încă disponibil.');
+    }catch(e){content.textContent=e.message;}finally{view.disabled=false;}});
+    row.appendChild(view);row.appendChild(content);card.appendChild(row);
+  });
+  return card;
+}
+async function queueSiteStatusText(text,cat,sub) {
+  if(!text.trim()||text.length>20000)throw new Error('Textul trebuie să conțină între 1 și 20.000 de caractere.');
+  const key=photoKey(cat,sub), timestamp=Date.now(), suffix=Math.random().toString(36).slice(2,10);
+  const id=key+'_'+timestamp+'_'+suffix;
+  const name=slugify(APP.siteNumber)+'_Info_Status_Site_'+timestamp+'_'+suffix+'.txt';
+  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  await dbPut(CONFIG.PHOTO_STORE,{id,blob,thumbUrl:'',key,cat,sub,name,siteNumber:APP.siteNumber,project:APP.project||'',status:'queued'});
+  const entry={id,name,blob:null,thumbUrl:'',status:'queued',driveId:null};
+  (APP.photos[key]||(APP.photos[key]=[])).push(entry);
+  if(APP.naStatus[key]){delete APP.naStatus[key];logNAChanges([{category:cat,subcategory:sub}], 'Active', new Date().toISOString());}
+  await saveState();
+  enqueueUploadItem({key,cat,sub,photoId:id});
+  processUploadQueue();
+}
+
+
+
 function isSubComplete(cat, sub) {
   const key = photoKey(cat, sub.subcategory);
   if (APP.naStatus[key]) return true; // N/A counts as complete
@@ -2773,6 +2836,7 @@ function isSubComplete(cat, sub) {
 }
 
 function buildSubCard(cat, sub) {
+  if (isSiteStatusText(cat, sub.subcategory)) return buildSiteStatusCard(cat, sub);
   const key      = photoKey(cat, sub.subcategory);
   const isNA     = !!APP.naStatus[key];
   const photos   = APP.photos[key] || [];
@@ -2846,9 +2910,7 @@ function buildSubCard(cat, sub) {
   // Action buttons row
   const cameraLabel = isNA ? '📷 Add Photo (Override N/A)' : (complete ? '✅ Complete - Add more' : '📷 Open Camera');
   const cameraBtnCls = `btn-camera${complete && !isNA ? ' complete' : ''}${isNA ? ' style="background:var(--card);color:var(--text-muted);border:1.5px solid var(--border);"' : ''}`;
-  const allowPhoneGallery =
-    cat.trim().toLowerCase() === 'final pictures' &&
-    sub.subcategory.trim().toLowerCase() === 'service test screenshoot';
+  const allowPhoneGallery = allowsPhoneGallery(cat, sub.subcategory);
   const phoneGalleryBtnHtml = allowPhoneGallery ? `
       <button class="btn-camera"
         onclick="openPhoneGallery('${key}','${catEsc}','${subEsc}',${required})">
@@ -3491,9 +3553,7 @@ function openCamera(key, cat, sub, required) {
 }
 
 function openPhoneGallery(key, cat, sub, required) {
-  const isAllowed =
-    String(cat).trim().toLowerCase() === 'final pictures' &&
-    String(sub).trim().toLowerCase() === 'service test screenshoot';
+  const isAllowed = allowsPhoneGallery(cat, sub);
   if (!isAllowed) return;
 
   preparePhotoCapture(key, cat, sub, required);
@@ -3543,7 +3603,7 @@ async function processUploadQueue() {
         fileName:    photo.name,
         uploadId:    photo.id,
         base64Data:  b64,
-        mimeType:    'image/jpeg',
+        mimeType:    photo.blob.type || 'image/jpeg',
         userName:    APP.user ? APP.user.name  : '',
         userEmail:   APP.user ? APP.user.email : '',
       });
@@ -3698,7 +3758,7 @@ async function uploadQueueItem(item) {
       fileName:    photo.name,
       uploadId:    photo.id,
       base64Data:  b64,
-      mimeType:    'image/jpeg',
+      mimeType:    photo.blob.type || 'image/jpeg',
       userName:    APP.user ? APP.user.name  : '',
       userEmail:   APP.user ? APP.user.email : '',
     });
